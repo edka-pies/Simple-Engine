@@ -50,12 +50,26 @@ void ForwardRendererPass::Execute(Scene& aScene)
     glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
     if (!aScene.lights.empty()) {
         Light* sun = aScene.lights[0];
-        // The "Camera" projection for the sun
-        glm::mat4 lightProjection = glm::ortho(-20.0f, 20.0f, -20.0f, 20.0f, 1.0f, 50.0f);
 
-        // Push the light position artificially backward along its direction line
-        glm::vec3 lightPos = -sun->GetDirection() * 20.0f;
-        glm::mat4 lightView = glm::lookAt(lightPos, glm::vec3(0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        // 1. Determine the center of our shadow box (the Camera or Player)
+        glm::vec3 center = glm::vec3(0.0f);
+        if (aScene.mainCamera) {
+            center = aScene.mainCamera->GetPosition();
+            // Snap to grid to prevent shadow shimmering when moving
+            float shadowRes = 2048.0f; // matches your SHADOW_WIDTH
+            float worldSize = 80.0f;   // matches your ortho size
+            float texelSize = worldSize / shadowRes;
+            center.x = floor(center.x / texelSize) * texelSize;
+            center.z = floor(center.z / texelSize) * texelSize;
+        }
+
+        // 2. Create a larger Ortho Box (e.g., 40 units around the player)
+        float size = 40.0f;
+        glm::mat4 lightProjection = glm::ortho(-size, size, -size, size, 0.1f, 100.0f);
+
+        // 3. Position the light "camera" looking at the center
+        glm::vec3 lightPos = center + (-sun->GetDirection() * 50.0f);
+        glm::mat4 lightView = glm::lookAt(lightPos, center, glm::vec3(0.0f, 1.0f, 0.0f));
 
         lightSpaceMatrix = lightProjection * lightView;
     }
@@ -130,6 +144,12 @@ void ForwardRendererPass::Execute(Scene& aScene)
 
     // Draw everything again with the main shader
     DrawAllGeometry(*myShader);
+
+    if (aScene.activeTerrain) {
+        // You might want to pass a generic diffuse color or a grass texture here
+        myShader->SetVec4(glm::vec4(0.2f, 0.8f, 0.2f, 1.0f), "materialDiffuse");
+        aScene.activeTerrain->Render(*myShader, aScene.mainCamera->GetViewProjectionMatrix());
+    }
 
     myShader->Unuse();
 }

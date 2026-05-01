@@ -8,6 +8,8 @@ public:
 	ForwardRendererPass();
 	void Init() override;
 	void Execute(Scene& aScene) override;
+    int windowWidth = 1920;
+    int windowHeight = 1080;
 private:
     Shader* myShader;
     Shader* shadowShader; // NEW: Dedicated shader for the depth pass

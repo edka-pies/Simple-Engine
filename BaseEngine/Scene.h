@@ -4,6 +4,7 @@
 #include <map>
 #include "Camera.h"
 #include "Object.h"
+#include "Terrain.h"
 #include "Renderable.h"
 #include "Light.h"
 
@@ -26,6 +27,8 @@ public:
 	std::vector<Light*> lights;
 
 	Camera* mainCamera;
+
+	Terrain* activeTerrain = nullptr;
 
 private:
 	void AddRenderable(std::shared_ptr<Mesh> renderable);

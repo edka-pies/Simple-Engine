@@ -151,6 +151,8 @@ void Application::Init(const int width, const int height, const std::string& nam
 
 		glfwSetInputMode(&GetWindow().GetWindow(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+		scene->activeTerrain = new Terrain(100, 100, 2.0f);
+
 		OnInit();
 	}
 }
@@ -182,6 +184,8 @@ void Application::Run()
 		float currentFrameTime = glfwGetTime();
 		float deltaTime = currentFrameTime - lastFrameTime;
 
+		glfwPollEvents();
+
 		// Simple keyboard-controlled camera (WSAD + Q/E for up/down)
 		if (scene && scene->mainCamera)
 		{
@@ -209,7 +213,6 @@ void Application::Run()
 		engineContext->Draw();
 
 		// Poll events before reading input so we get updated states
-		glfwPollEvents();
 
 		// Toggle cursor with Alt (show) and 'I' (hide / resume)
 		{
@@ -238,16 +241,14 @@ void Application::Run()
 		}
 
 		// Mouse-look: read cursor delta and forward to camera, but only when cursor is locked
+		double xpos, ypos;
+		GLFWwindow* win = &GetWindow().GetWindow();
+		glfwGetCursorPos(win, &xpos, &ypos);
 		if (scene && scene->mainCamera && !cursorEnabled)
 		{
-			GLFWwindow* win = &GetWindow().GetWindow();
-
-			// If ImGui wants the mouse, skip mouse-look
 			ImGuiIO& io = ImGui::GetIO();
 			if (!io.WantCaptureMouse)
 			{
-				double xpos, ypos;
-				glfwGetCursorPos(win, &xpos, &ypos);
 
 				// compute deltas; invert y because window coords have origin at top-left
 				float xoffset = static_cast<float>(xpos - lastX);
@@ -262,11 +263,10 @@ void Application::Run()
 				}
 
 				scene->mainCamera->ProcessMouseMovement(xoffset, yoffset);
-
-				lastX = xpos;
-				lastY = ypos;
 			}
 		}
+		lastX = xpos;
+		lastY = ypos;
 
 		editor->FrameRun();
 		editor->RenderEditor(&window->GetWindow());
@@ -274,6 +274,13 @@ void Application::Run()
 
 		lastFrameTime = currentFrameTime;
 
+		if (scene->activeTerrain) {
+			glm::vec3 camPos = scene->mainCamera->GetPosition();
+			float groundHeight = scene->activeTerrain->GetHeightAt(camPos.x, camPos.z);
+
+			// Uncomment to test: 
+			// std::cout << "Cam Y: " << camPos.y << " | Ground Y: " << groundHeight << "\n";
+		}
 	}
 
 	CleanUp();
