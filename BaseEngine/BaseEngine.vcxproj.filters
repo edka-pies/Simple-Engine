@@ -256,5 +256,11 @@
     <None Include="Assets\Shaders\VertexShader.glsl">
       <Filter>Shader</Filter>
     </None>
+    <None Include="shadow_vertex.glsl">
+      <Filter>Shader</Filter>
+    </None>
+    <None Include="shadow_fragment.glsl">
+      <Filter>Shader</Filter>
+    </None>
   </ItemGroup>
 </Project>

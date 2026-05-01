@@ -41,4 +41,8 @@ public:
 	glm::vec3 attenuation;
 
 	Light(const LightCreateInfo* info);
+
+	glm::vec3 GetDirection() const { return direction; }
+
+private:
 };

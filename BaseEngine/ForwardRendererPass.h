@@ -9,6 +9,13 @@ public:
 	void Init() override;
 	void Execute(Scene& aScene) override;
 private:
-	Shader* myShader;
+    Shader* myShader;
+    Shader* shadowShader; // NEW: Dedicated shader for the depth pass
+
+    // NEW: Shadow mapping variables
+    unsigned int depthMapFBO;
+    unsigned int depthMap;
+    const unsigned int SHADOW_WIDTH = 2048;
+    const unsigned int SHADOW_HEIGHT = 2048;
 };
 

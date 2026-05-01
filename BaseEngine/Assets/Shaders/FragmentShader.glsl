@@ -28,12 +28,45 @@ uniform float textureMixFactor = 1.0;
 uniform sampler2D specularMap;
 uniform bool useSpecularMap;
 
+uniform sampler2D shadowMap;
+uniform mat4 lightSpaceMatrix;
+
 in vec3 v_normal;
 in vec2 UV_Coord;
 in vec3 position;
 in vec3 vecToEye;
+in vec4 FragPosLightSpace;
 
 out vec4 FragColor;
+
+float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
+{
+    vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
+    projCoords = projCoords * 0.5 + 0.5; // Transform to [0,1] range
+    
+    if(projCoords.z > 1.0) return 0.0; // Outside ortho projection = no shadow
+    
+    float closestDepth = texture(shadowMap, projCoords.xy).r; 
+    float currentDepth = projCoords.z;
+    
+    // Bias to prevent shadow acne
+    float bias = max(0.05 * (1.0 - dot(normal, lightDir)), 0.005);
+    
+    // PCF (Soft Shadows)
+    float shadow = 0.0;
+    vec2 texelSize = 1.0 / textureSize(shadowMap, 0);
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+            shadow += currentDepth - bias > pcfDepth  ? 1.0 : 0.0;        
+        }    
+    }
+    shadow /= 9.0;
+    
+    return shadow;
+}
 
 void main()
 {
@@ -59,6 +92,7 @@ void main()
     {
         vec3 L;
         float attenuation = 1.0;
+        float shadow = 0.0; // NEW: Default no shadowtenuation = 1.0;
 
         if (light_type[i] == 0) {
             // Point light
@@ -69,6 +103,7 @@ void main()
             // Directional light: direction is direction light points to.
             L = normalize(-light_direction[i]);
             attenuation = 1.0;
+            shadow = ShadowCalculation(FragPosLightSpace, N, L);
         } else {
             // Spot light
             L = normalize(light_position[i] - position);
@@ -95,11 +130,13 @@ void main()
         float spec = pow(specAngle, float(materialShininess));
         vec3 specular = spec * (light_specular[i].xyz * materialSpecular.xyz);
 
-        vec3 ambient = spec * (light_specular[i].xyz * materialSpecular.xyz) * specMask;
+        // FIXED: Your ambient calculation previously used specular variables.
+        vec3 ambient = (light_ambient[i].xyz * materialAmbient.xyz);
 
         ambientSum += ambient;
-        diffuseSum += diffuse * attenuation;
-        specularSum += specular * attenuation;
+        // NEW: Multiply diffuse and specular by (1.0 - shadow)
+        diffuseSum += (1.0 - shadow) * diffuse * attenuation;
+        specularSum += (1.0 - shadow) * specular * attenuation;
     }
 
     vec3 color = ambientSum + diffuseSum + specularSum;

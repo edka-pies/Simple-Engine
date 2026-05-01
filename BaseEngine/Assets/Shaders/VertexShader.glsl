@@ -4,6 +4,7 @@ uniform mat4 modelMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 projectionMatrix;
 uniform vec4 eyePosition; // world-space eye position
+uniform mat4 lightSpaceMatrix;
 
 layout(location = 0) in vec3 inPosition;
 layout(location = 1) in vec2 inUV;
@@ -13,6 +14,7 @@ out vec3 v_normal;
 out vec2 UV_Coord;
 out vec3 position;
 out vec3 vecToEye;
+out vec4 FragPosLightSpace;
 
 void main()
 {
@@ -29,4 +31,6 @@ void main()
 
     // vector from fragment to eye in world space
     vecToEye = normalize(eyePosition.xyz - position);
+
+    FragPosLightSpace = lightSpaceMatrix * modelMatrix * vec4(inPosition, 1.0);
 }
