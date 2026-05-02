@@ -157,6 +157,7 @@
     <ClCompile Include="MeshManager.cpp" />
     <ClCompile Include="MessageBus.cpp" />
     <ClCompile Include="Object.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="Renderable.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderPass.cpp" />
@@ -189,6 +190,7 @@
     <ClInclude Include="Light.h" />
     <ClInclude Include="Loader.h" />
     <ClInclude Include="Material.h" />
+    <ClInclude Include="MathUtils.h" />
     <ClInclude Include="MemoryCheck.h" />
     <ClInclude Include="Mesh.h" />
     <ClInclude Include="MeshManager.h" />
@@ -196,6 +198,7 @@
     <ClInclude Include="Message.h" />
     <ClInclude Include="MessageBus.h" />
     <ClInclude Include="Object.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="Renderable.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPass.h" />
@@ -210,9 +213,9 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\FragmentShader.glsl" />
+    <None Include="Assets\Shaders\shadow_fragment.glsl" />
+    <None Include="Assets\Shaders\shadow_vertex.glsl" />
     <None Include="Assets\Shaders\VertexShader.glsl" />
-    <None Include="shadow_fragment.glsl" />
-    <None Include="shadow_vertex.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

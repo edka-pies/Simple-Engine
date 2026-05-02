@@ -51,13 +51,6 @@ void Application::Init(const int width, const int height, const std::string& nam
 
 		GetRenderer().Init();
 		GetScene().Init();
-		
-		LightCreateInfo dirInfo;
-		dirInfo.type = LightType::Directional;
-		dirInfo.direction = glm::normalize(glm::vec3(0.2f, -1.0f, 0.3f));
-		dirInfo.color = glm::vec3(1.0f, 1.0f, 1.0f); // White sunlight
-		dirInfo.strenght = 1.0f;
-		scene->lights.push_back(new Light(&dirInfo));
 
 		// 2. Subscribe to Light Creation
 		MessageBus::GetInstance().Subscribe(MessageType::CreateLight, [this](Message* msg) {
@@ -153,6 +146,8 @@ void Application::Init(const int width, const int height, const std::string& nam
 
 		scene->activeTerrain = new Terrain(100, 100, 2.0f);
 
+		MessageBus::GetInstance().EnqueueMessage(std::make_unique<CreateLightMessage>(LightType::Directional));
+
 		OnInit();
 	}
 }
@@ -183,10 +178,13 @@ void Application::Run()
 	{
 		float currentFrameTime = glfwGetTime();
 		float deltaTime = currentFrameTime - lastFrameTime;
+		lastFrameTime = currentFrameTime;
+
+		// Cap deltaTime to avoid "Spiral of Death" during debugging
+		if (deltaTime > 0.25f) deltaTime = 0.25f;
 
 		glfwPollEvents();
 
-		// Simple keyboard-controlled camera (WSAD + Q/E for up/down)
 		if (scene && scene->mainCamera)
 		{
 			GLFWwindow* win = &GetWindow().GetWindow();
@@ -211,38 +209,34 @@ void Application::Run()
 		GetScene().Update(deltaTime);
 
 		engineContext->Draw();
+		
+		GLFWwindow* win = &GetWindow().GetWindow();
 
-		// Poll events before reading input so we get updated states
-
-		// Toggle cursor with Alt (show) and 'I' (hide / resume)
+		bool altPressed = (glfwGetKey(win, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) == GLFW_PRESS;
+		if (altPressed && !altWasPressed)
 		{
-			GLFWwindow* win = &GetWindow().GetWindow();
-
-			bool altPressed = (glfwGetKey(win, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) == GLFW_PRESS;
-			if (altPressed && !altWasPressed)
-			{
-				// show cursor so the user can interact with OS / UI
-				glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-				cursorEnabled = true;
-				// avoid a large jump when re-locking later
-				firstMouse = true;
-			}
-			altWasPressed = altPressed;
-
-			bool iPressed = (glfwGetKey(win, GLFW_KEY_I) == GLFW_PRESS);
-			if (iPressed && !iWasPressed)
-			{
-				// hide and lock cursor back to the engine (resume mouse-look)
-				glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-				cursorEnabled = false;
-				firstMouse = true;
-			}
-			iWasPressed = iPressed;
+			// show cursor so the user can interact with OS / UI
+			glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+			cursorEnabled = true;
+			// avoid a large jump when re-locking later
+			firstMouse = true;
 		}
+		altWasPressed = altPressed;
+
+		bool iPressed = (glfwGetKey(win, GLFW_KEY_I) == GLFW_PRESS);
+		if (iPressed && !iWasPressed)
+		{
+			// hide and lock cursor back to the engine (resume mouse-look)
+			glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+			cursorEnabled = false;
+			firstMouse = true;
+		}
+		iWasPressed = iPressed;
+		
 
 		// Mouse-look: read cursor delta and forward to camera, but only when cursor is locked
 		double xpos, ypos;
-		GLFWwindow* win = &GetWindow().GetWindow();
+		//GLFWwindow* win = &GetWindow().GetWindow();
 		glfwGetCursorPos(win, &xpos, &ypos);
 		if (scene && scene->mainCamera && !cursorEnabled)
 		{

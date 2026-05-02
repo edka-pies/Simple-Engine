@@ -129,7 +129,7 @@ void main()
         ambientSum += ambient;
         // NEW: Multiply diffuse and specular by (1.0 - shadow)
         diffuseSum += (1.0 - shadow) * diffuse * attenuation;
-        specularSum += (1.0 - shadow) * specular * attenuation;
+        specularSum += (1.0 - shadow) *  specular * attenuation;
     }
 
     vec3 color = ambientSum + diffuseSum + specularSum;

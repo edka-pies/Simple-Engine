@@ -144,6 +144,9 @@
     <ClCompile Include="Terrain.cpp">
       <Filter>Pliki źródłowe</Filter>
     </ClCompile>
+    <ClCompile Include="Player.cpp">
+      <Filter>Pliki źródłowe</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Renderable.h">
@@ -254,6 +257,12 @@
     <ClInclude Include="Terrain.h">
       <Filter>Pliki nagłówkowe</Filter>
     </ClInclude>
+    <ClInclude Include="MathUtils.h">
+      <Filter>Pliki nagłówkowe</Filter>
+    </ClInclude>
+    <ClInclude Include="Player.h">
+      <Filter>Pliki nagłówkowe</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Assets\Shaders\FragmentShader.glsl">
@@ -262,10 +271,10 @@
     <None Include="Assets\Shaders\VertexShader.glsl">
       <Filter>Shader</Filter>
     </None>
-    <None Include="shadow_vertex.glsl">
+    <None Include="Assets\Shaders\shadow_fragment.glsl">
       <Filter>Shader</Filter>
     </None>
-    <None Include="shadow_fragment.glsl">
+    <None Include="Assets\Shaders\shadow_vertex.glsl">
       <Filter>Shader</Filter>
     </None>
   </ItemGroup>

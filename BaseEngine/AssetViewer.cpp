@@ -251,16 +251,18 @@ void AssetViewer::Draw()
 	if (ImGui::CollapsingHeader("Texture Settings")) {
 		const char* filters[] = { "Point (Nearest)", "Bilinear", "Trilinear (MipMaps)" };
 		static int current_filter = 2;
+		if (selectedObject != nullptr)
+		{
+			if (ImGui::Combo("Filtering Mode", &current_filter, filters, IM_ARRAYSIZE(filters))) {
+				GLint glFilter;
+				if (current_filter == 0) glFilter = GL_NEAREST;
+				else if (current_filter == 1) glFilter = GL_LINEAR;
+				else glFilter = GL_LINEAR_MIPMAP_LINEAR;
 
-		if (ImGui::Combo("Filtering Mode", &current_filter, filters, IM_ARRAYSIZE(filters))) {
-			GLint glFilter;
-			if (current_filter == 0) glFilter = GL_NEAREST;
-			else if (current_filter == 1) glFilter = GL_LINEAR;
-			else glFilter = GL_LINEAR_MIPMAP_LINEAR;
-
-			// Apply to the current object's texture
-			if (selectedObject->GetMesh()->GetTexture()) {
-				selectedObject->GetMesh()->GetTexture()->SetFiltering(glFilter);
+				// Apply to the current object's texture
+				if (selectedObject->GetMesh()->GetTexture()) {
+					selectedObject->GetMesh()->GetTexture()->SetFiltering(glFilter);
+				}
 			}
 		}
 	}

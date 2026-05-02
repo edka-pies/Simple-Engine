@@ -74,30 +74,30 @@ void ForwardRendererPass::Execute(Scene& aScene)
         lightSpaceMatrix = lightProjection * lightView;
     }
 
-    // Helper Lambda function to draw all geometry (Saves us from writing loops twice)
     auto DrawAllGeometry = [&](Shader& shader) {
+        // 1. Standalone meshes
         for (auto& mesh : aScene.renderables) {
-            if (mesh) mesh->Render(shader, glm::mat4(1.0f)); // Assuming Render applies the transform
+            if (mesh) mesh->Render(shader, glm::mat4(1.0f));
         }
+
+        // 2. Objects - USE THE REAL MATRIX
         for (Object* obj : aScene.objects) {
-            if (obj) {
+            if (obj && obj->GetMesh()) {
+                // This puts your buildings/fortifications in the right place
+                glm::mat4 realMatrix = obj->GetMesh()->GetModelMatrix();
+
                 for (auto& mesh : obj->GetRenderables()) {
-                    if (mesh) mesh->Render(shader, glm::mat4(1.0f));
+                    if (mesh) mesh->Render(shader, realMatrix);
                 }
             }
         }
         };
-
-    // ==========================================
-    // PASS 1: Render Shadows
-    // ==========================================
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
     glClear(GL_DEPTH_BUFFER_BIT); // Only clear depth!
 
     shadowShader->Use();
     shadowShader->SetMatrix(lightSpaceMatrix, "lightSpaceMatrix");
-    DrawAllGeometry(*shadowShader);
     shadowShader->Unuse();
 
     // ==========================================
@@ -145,7 +145,7 @@ void ForwardRendererPass::Execute(Scene& aScene)
     // Draw everything again with the main shader
     DrawAllGeometry(*myShader);
 
-    if (aScene.activeTerrain) {
+    if (aScene.activeTerrain && aScene.mainCamera) {
         // You might want to pass a generic diffuse color or a grass texture here
         myShader->SetVec4(glm::vec4(0.2f, 0.8f, 0.2f, 1.0f), "materialDiffuse");
         aScene.activeTerrain->Render(*myShader, aScene.mainCamera->GetViewProjectionMatrix());

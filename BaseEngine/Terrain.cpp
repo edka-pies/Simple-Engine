@@ -1,5 +1,6 @@
 #include "Terrain.h"
 #include "Shader.h"
+#include "MathUtils.h"
 #include <glad/glad/glad.h>
 #include <cmath>
 #include <iostream>
@@ -19,38 +20,46 @@ Terrain::~Terrain() {
 }
 
 void Terrain::GenerateMesh() {
-    // 1. Generate Vertices
+    vertices.clear();
+    indices.clear();
+
+    // PASS 1: Calculate all heights first
     for (int z = 0; z < depth; z++) {
         for (int x = 0; x < width; x++) {
-
-            // Calculate actual world positions
             float worldX = x * scale;
             float worldZ = z * scale;
+            // Insert your Perlin/Noise function here
+            heights[z * width + x] = SmoothNoise(worldX * 0.1f, worldZ * 0.1f) * 5.0f;
+        }
+    }
 
-            // Generate some fake "hills" for testing using sine waves
-            float worldY = sin(worldX * 0.1f) * 2.0f + cos(worldZ * 0.1f) * 2.0f;
+    // PASS 2: Build the Vertex Buffer with Normals
+    for (int z = 0; z < depth; z++) {
+        for (int x = 0; x < width; x++) {
+            // A. Position
+            float worldX = x * scale;
+            float worldY = heights[z * width + x];
+            float worldZ = z * scale;
 
-            // Save to our CPU height array for physics
-            heights[z * width + x] = worldY;
+            // B. Normal Calculation (Central Difference)
+            // Look at neighbors. If at edge, just use current height.
+            float hL = (x > 0) ? heights[z * width + (x - 1)] : worldY;
+            float hR = (x < width - 1) ? heights[z * width + (x + 1)] : worldY;
+            float hD = (z > 0) ? heights[(z - 1) * width + x] : worldY;
+            float hU = (z < depth - 1) ? heights[(z + 1) * width + x] : worldY;
 
-            // Simple UP normal for now (you can calculate real normals later)
-            float nx = 0.0f, ny = 1.0f, nz = 0.0f;
+            // This creates a vector perpendicular to the slope
+            glm::vec3 normal = glm::normalize(glm::vec3(hL - hR, 2.0f * scale, hD - hU));
 
-            // UVs
-            float u = (float)x / (float)width;
-            float v = (float)z / (float)depth;
-
-            // Add to vertex array (Position, Normal, UV)
-            vertices.push_back(worldX);
-            vertices.push_back(worldY);
-            vertices.push_back(worldZ);
-
-            vertices.push_back(nx);
-            vertices.push_back(ny);
-            vertices.push_back(nz);
-
-            vertices.push_back(u);
-            vertices.push_back(v);
+            // C. Push to vector (Total 8 floats)
+            vertices.push_back(worldX);  // 0
+            vertices.push_back(worldY);  // 1
+            vertices.push_back(worldZ);  // 2
+            vertices.push_back(normal.x);// 3
+            vertices.push_back(normal.y);// 4
+            vertices.push_back(normal.z);// 5
+            vertices.push_back((float)x / width); // 6 (U)
+            vertices.push_back((float)z / depth); // 7 (V)
         }
     }
 
