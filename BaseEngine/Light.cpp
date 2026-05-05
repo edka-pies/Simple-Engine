@@ -16,7 +16,7 @@ Light::Light(const LightCreateInfo* info)
         outerCutoff = info->outerCutoff;
         attenuation = info->attenuation;
     } 
-    else //Just in case
+    else 
     {
         position = glm::vec3(0.0f, 10.0f, 0.0f);
         color = glm::vec3(1.0f);

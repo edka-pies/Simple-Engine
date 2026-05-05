@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <glm/glm/glm.hpp>
-#include "Scene.h" // Scene.h includes Light.h
+#include "Scene.h"
 
 class Shader
 {
@@ -14,7 +14,6 @@ public:
 
 	void SetMatrix(const glm::mat4& aMatrix, const std::string& aName);
 
-	// small uniform helpers
 	void SetVec3(const glm::vec3& v, const std::string& name);
 	void SetVec4(const glm::vec4& v, const std::string& name);
 	void SetFloat(float f, const std::string& name);

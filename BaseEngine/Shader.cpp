@@ -17,7 +17,7 @@ Shader::Shader(const char* vertPath, const char* fragPath)
     glAttachShader(shaderProgram, FragmentShader);
     glLinkProgram(shaderProgram);
 
-    // check link status (optional but helpful)
+    // check link status
     int success;
     char infoLog[512];
     glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
@@ -82,19 +82,18 @@ void Shader::SetLights(const std::vector<Light*>& lights)
         const Light* L = lights[i];
         if (!L) continue;
 
-        // compose uniform names like "light_position[0]"
+        // compose uniform names
         std::string idx = "[" + std::to_string(i) + "]";
 
         SetVec3(L->position, "light_position" + idx);
         SetVec4(glm::vec4(L->color * L->strenght, 1.0f), "light_diffuse" + idx);
-        // Ambient — small fraction of diffuse (or compute on GPU). We send a scaled ambient here.
+        // Ambient
         SetVec4(glm::vec4(L->color * 0.15f * L->strenght, 1.0f), "light_ambient" + idx);
         SetVec4(glm::vec4(L->color, 1.0f), "light_specular" + idx);
 
         SetVec3(L->attenuation, "light_attenuation" + idx);
         SetVec3(L->direction, "light_direction" + idx);
 
-        // send precomputed cos of cutoffs (so shader won't call cos per fragment)
         float cosCut = glm::cos(glm::radians(L->cutoff));
         float cosOuter = glm::cos(glm::radians(L->outerCutoff));
         SetFloat(cosCut, "light_cutoff" + idx);

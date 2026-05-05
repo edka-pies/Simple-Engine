@@ -2,7 +2,7 @@
 
 void MessageBus::Subscribe(MessageType type, MessageCallback callback)
 {
-    // Add the callback to the list for this specific message type
+    // Add the callback to the list
     subscribers[type].push_back(callback);
 }
 
@@ -17,7 +17,7 @@ void MessageBus::DispatchMessages()
     // Process every message currently in the queue
     while (!messageQueue.empty())
     {
-        // Get the oldest message
+        // Get oldest
         std::unique_ptr<Message> msg = std::move(messageQueue.front());
         messageQueue.pop();
 

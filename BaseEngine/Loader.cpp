@@ -52,7 +52,7 @@ void Loader::Triangulate(Face& face)
 
 void Loader::LoadModel(const std::string& filePath)
 {
-    // clear any previous data
+    // clear previous data
     vertices.clear();
     faces.clear();
     indices.clear();
@@ -125,7 +125,6 @@ void Loader::LoadModel(const std::string& filePath)
             // transition if needed
             if (iterState != IterState::ReadingVertices)
             {
-                // leaving other stage -> flush anything outstanding
                 flushUVBatch();
                 flushNormalBatch();
                 flushFaceBatch();
@@ -210,25 +209,22 @@ void Loader::LoadModel(const std::string& filePath)
                 size_t p1 = t.find('/');
                 if (p1 == std::string::npos)
                 {
-                    // only vertex index
                     v = std::stoi(t);
                 }
                 else
                 {
-                    // v / vt / vn  (some parts may be empty)
+                    // v / vt / vn
                     std::string sV = t.substr(0, p1);
                     if (!sV.empty()) v = std::stoi(sV);
 
                     size_t p2 = t.find('/', p1 + 1);
                     if (p2 == std::string::npos)
                     {
-                        // v/vt
                         std::string sVT = t.substr(p1 + 1);
                         if (!sVT.empty()) vt = std::stoi(sVT);
                     }
                     else
                     {
-                        // v/vt/vn or v//vn
                         std::string sVT = t.substr(p1 + 1, p2 - p1 - 1);
                         if (!sVT.empty()) vt = std::stoi(sVT);
 
@@ -237,12 +233,10 @@ void Loader::LoadModel(const std::string& filePath)
                     }
                 }
 
-                // Convert negative (relative) indices to positive 1-based indices.
                 if (v < 0) v = static_cast<int>(positions.size()) + v + 1;
                 if (vt < 0) vt = static_cast<int>(uvs.size()) + vt + 1;
                 if (vn < 0) vn = static_cast<int>(normals.size()) + vn + 1;
 
-                // if vertex index is missing or zero -> invalid face (skip)
                 if (v == 0)
                 {
                     validFace = false;
@@ -269,9 +263,9 @@ void Loader::LoadModel(const std::string& filePath)
             if (faceBatchCount >= BATCH_SIZE)
                 flushFaceBatch();
         }
-    } // end read file
+    } 
+    // end read file
 
-    // final flush of any remaining batches
     flushVertexBatch();
     flushUVBatch();
     flushNormalBatch();
@@ -279,10 +273,8 @@ void Loader::LoadModel(const std::string& filePath)
 
     file.close();
 
-    //prepare for buffering
     ProcessData(positions, uvs, normals);
 
-    // update iterative state
     iterState = IterState::Preparing;
     std::cout << "LoadModel: parsing complete, prepared data for buffering (vertices=" << vertices.size()
               << ", indices=" << indices.size() << ", faces(tris)=" << faces.size() << ")\n";
@@ -331,7 +323,7 @@ void Loader::ProcessData(std::vector<glm::vec3> positions, std::vector<glm::vec2
         }
     }
 
-    // Recompute smooth per-vertex normals when file provided no normals
+    // Recompute smooth per-vertex normals
     if (normals.empty())
     {
         std::vector<glm::vec3> accumNormals(vertices.size(), glm::vec3(0.0f));
@@ -359,7 +351,6 @@ void Loader::ProcessData(std::vector<glm::vec3> positions, std::vector<glm::vec2
             accumNormals[ic] += faceNormal;
         }
 
-        // normalize and write back to vertices
         for (size_t i = 0; i < vertices.size(); ++i)
         {
             glm::vec3 n = accumNormals[i];

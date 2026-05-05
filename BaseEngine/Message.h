@@ -9,9 +9,17 @@ enum class MessageType
     ObjectMoved,
     ObjectSpawned,
     ObjectDeleted,
+	PrimitiveSpawned,
     SceneLoaded,
     CreateLight,
 	DeleteLight,
+    ChangeMesh,
+};
+
+enum class PrimitiveShape {
+    Cube,
+    Plane,
+    Sphere 
 };
 
 // 2. The Base Message Class
@@ -22,20 +30,15 @@ public:
     MessageType GetType() const { return type; }
 
 protected:
-    // Only subclasses can set the type
     Message(MessageType t) : type(t) {}
     MessageType type;
 };
 
-// 3. Specific Message Sub-classes (The "Payloads")
-
 class ObjectMovedMessage : public Message
 {
 public:
-    // We pass the object pointer and the new transform data
     ObjectMovedMessage(class Object* target, const glm::vec3& newPos)
-        : Message(MessageType::ObjectMoved), object(target), position(newPos) {
-    }
+        : Message(MessageType::ObjectMoved), object(target), position(newPos) {}
 
     class Object* object;
     glm::vec3 position;
@@ -45,8 +48,7 @@ class ObjectSpawnedMessage : public Message
 {
 public:
     ObjectSpawnedMessage(const std::string& modelFilePath)
-        : Message(MessageType::ObjectSpawned), filePath(modelFilePath) {
-    }
+        : Message(MessageType::ObjectSpawned), filePath(modelFilePath) {}
 
     std::string filePath;
 };
@@ -54,14 +56,30 @@ public:
 class CreateLightMessage : public Message {
 public:
     CreateLightMessage(LightType t)
-        : Message(MessageType::CreateLight), typeToCreate(t) {
-    }
+        : Message(MessageType::CreateLight), typeToCreate(t) {}
 
     LightType typeToCreate;
 };
 
 class DeleteLightMessage : public Message {
 public:
-    DeleteLightMessage(Light* target) : Message(MessageType::DeleteLight), lightToDelete(target) {}
+    DeleteLightMessage(Light* target) 
+        : Message(MessageType::DeleteLight), lightToDelete(target) {}
     Light* lightToDelete;
+};
+
+class PrimitiveSpawnedMessage : public Message {
+public:
+    PrimitiveSpawnedMessage(PrimitiveShape shape) 
+        : Message(MessageType::PrimitiveSpawned), shapeType(shape) {}
+    PrimitiveShape shapeType;
+};
+
+class ChangeMeshMessage : public Message {
+public:
+    Object* targetObject;
+    std::string newFilePath;
+
+    ChangeMeshMessage(Object* target, const std::string& path)
+        : Message(MessageType::ChangeMesh), targetObject(target), newFilePath(path) {}
 };

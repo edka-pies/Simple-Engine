@@ -74,7 +74,6 @@ void EditorBase::FrameRun()
         float farP = cam->GetFarPlane();
         if (ImGui::InputFloat("Near Plane", &nearP))
         {
-            // clamp a bit
             if (nearP < 0.001f) nearP = 0.001f;
             cam->SetNearFar(nearP, farP);
         }

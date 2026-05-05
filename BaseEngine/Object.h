@@ -31,9 +31,32 @@ public:
 
 	void SetMesh(std::shared_ptr<Mesh> aMesh);
 
+	void SetRotation(const glm::vec3& newRotation);
+
+	void SetPosition(const glm::vec3& newPosition);
+
+	void SetScale(const glm::vec3& newScale);
+
+	glm::vec3 GetPosition() const { return localTransform.position; }
+	glm::vec3 GetRotation() const { return localTransform.rotation; }
+	glm::vec3 GetScale() const { return localTransform.scale; }
+
+	const glm::mat4& GetModelMatrix() const {
+		if (transformDirtyFlag) {
+			cachedModelMatrix = localTransform.mat4();
+			transformDirtyFlag = false;
+		}
+		return cachedModelMatrix;
+	}
+
+	inline Transform& GetTransform() { return localTransform; }
+
 	std::shared_ptr<Mesh> GetMesh();
 private:
 
+	Transform localTransform;
+	mutable glm::mat4 cachedModelMatrix = glm::mat4(1.0f);
+	mutable bool transformDirtyFlag = true;
 	std::string name;
 	std::shared_ptr<Mesh> mesh;
 	std::vector<std::shared_ptr<Mesh>> renderables;

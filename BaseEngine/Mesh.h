@@ -3,13 +3,14 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <cfloat>
 #include "Renderable.h"
+#include "PhysicsUtils.h"
 #include "Transform.h"
 #include "ComponentRender.h"
 #include "Texture.h"
 #include "MemoryCheck.h"
 
-//#pragma pack(push,4)
 struct Vertex
 {
 	glm::vec3 position;
@@ -37,7 +38,7 @@ struct Vertex
 		return position == other.position && normal == other.normal && textureCoord == other.textureCoord;
 	}
 };
-//#pragma pack(pop)
+
 
 struct ObjVertex
 {
@@ -83,35 +84,22 @@ public:
 
 	virtual void CleanUp() override;
 
-	void SetRotation(const glm::vec3& newRotation);
-
-	void SetPosition(const glm::vec3& newPosition);
-
-	void SetScale(const glm::vec3& newScale);
-
 	// Texture API
 	void SetTexture(std::shared_ptr<Texture> aTexture);
 	std::shared_ptr<Texture> GetTexture();
 
-	inline  Transform& GetTransform() { return localTransform; }
 
-	inline virtual const glm::mat4& GetModelMatrix() const { return localMatrix; }
-
-
-public:
-	static Mesh* MakeTriangle();
-
-	static Mesh* MakeSquare();
-
-	static Mesh* MakeCube();
-
-
-	Transform localTransform;
+	const std::vector<Vertex>& GetVertices() const { return vertices; }
+	const std::vector<unsigned int>& GetIndices() const {return indices;}
+	const AABB& GetLocalAABB() const { return localAABB; } 
 
 	static std::shared_ptr<Mesh> CreateModelFromFile(const std::string& filePath);
-private:
 
+	static AABB CalculateLocalAABB(const std::vector<Vertex>& vertices);
 
+	AABB localAABB = { glm::vec3(0.0f), glm::vec3(0.0f) }; 
+	std::vector<Vertex> vertices;
+	std::vector<unsigned int> indices;
 
 protected:
 	unsigned int VBO; // Raw data on vertices
@@ -125,8 +113,6 @@ protected:
 
 	// number of floats per vertex (3 for pos-only, 5 for pos+uv, 6 pos+normal, 8 pos+uv+normal)
 	unsigned int vertexStride = 3;
-
-	glm::mat4 localMatrix = glm::mat4(1.0f);
 
 	bool transformDirtyFlag = true;
 	bool isCube = false;

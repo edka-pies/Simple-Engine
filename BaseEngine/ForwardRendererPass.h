@@ -12,9 +12,9 @@ public:
     int windowHeight = 1080;
 private:
     Shader* myShader;
-    Shader* shadowShader; // NEW: Dedicated shader for the depth pass
+    Shader* shadowShader; // Dedicated shader for the depth pass
 
-    // NEW: Shadow mapping variables
+    // Shadow Mapping
     unsigned int depthMapFBO;
     unsigned int depthMap;
     const unsigned int SHADOW_WIDTH = 2048;

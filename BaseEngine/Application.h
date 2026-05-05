@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include "Light.h"
+#include "CameraManager.h"
 
 class Object;
 class Renderer;
@@ -9,6 +10,7 @@ class EngineContext;
 class Scene;
 class EditorBase;
 class Window;
+class Message;
 
 class Application
 {
@@ -40,6 +42,15 @@ private:
 	void KeyCallback();
 	void MouseCallback();
 
+	void SetupSubscriptions();
+
+	void HandleObjectSpawned();
+	void HandleObjectDeleted();
+	void HandleChangeMesh();
+	void HandleCreateLight();
+	void HandleDeleteLight();
+	void HandlePrimitiveSpawned();
+
 	std::vector<Object*> masterObjectList;
 	Window* window;
 	Renderer* renderer;
@@ -47,5 +58,6 @@ private:
 	Scene* scene;
 	EditorBase* editor;
 	Light* mainLight;
+	CameraManager cameraManager;
 };
 

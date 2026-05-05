@@ -1,124 +1,98 @@
-1\. Rendering Architecture: The Forward Pipeline
+1\. Design Philosophy
 
-Describe your graphics backend not just as "OpenGL," but as a structured pipeline.
+This engine is built on a Data-Oriented Entity Paradigm, heavily emphasizing the separation of blueprint data (Memory) from spatial data (Instances). The architecture is designed to minimize CPU overhead through memory caching, lazy mathematical evaluation, and multi-stage physics validation.
 
 
 
-The Blinn-Phong Shading Model
+2\. Core Object Architecture
 
-Explain how you calculate lighting. Since you are using Phong/Blinn-Phong, mention the three-part calculation:
+The fundamental building block of the engine is the strict separation between Mesh and Object.
 
 
 
-Ambient: Global illumination approximation.
+Mesh (The Blueprint): Represents pure structural data. It holds OpenGL buffer IDs (VAO, VBO), material properties, and CPU-side arrays (std::vector<Vertex>). It calculates and stores its localAABB exactly once upon creation. It has zero knowledge of the world.
 
 
 
-Diffuse: Lambertian reflection based on light-to-surface normals.
+Object (The Instance): Represents a physical entity in the game world. It holds a Transform struct (Position, Rotation, Scale) and a shared pointer to a Mesh. Multiple Objects can point to the same Mesh to achieve hardware instancing and memory efficiency.
 
 
 
-Specular: The "shininess" factor (describe if you are using the Reflection vector or the Half-way vector for Blinn-Phong optimization).
+Lazy Transform Evaluation
 
+To prevent redundant matrix multiplication, Object utilizes a "Dirty Flag" pattern:
 
 
-Forward Rendering Pass
 
-Explain that your renderer iterates through every Entity and draws them one by one, calculating lighting in a single pass.
+Any changes to Position/Rotation/Scale trigger transformDirtyFlag = true.
 
 
 
-Mention your Shader Program management: how you pass Uniforms for Light Position, Camera View, and Material Properties.
+When GetModelMatrix() is called (by the Physics or Render pipelines), the matrix is mathematically rebuilt only if the flag is true. Otherwise, it instantly returns a const cached matrix.
 
 
 
-2\. Resource Pipeline: STB Image Integration
+3\. Resource Management (MeshManager)
 
-This section proves you understand how to bridge the gap between CPU files and GPU memory.
+The engine prevents RAM and VRAM duplication through a centralized MeshManager.
 
 
 
-Texture Management
+Models are loaded via .obj parsing and immediately stored in a hashed map (std::unordered\_map<std::string, std::shared\_ptr<Mesh>>).
 
-STB\_Image Integration: Detail how you use the stbi library to decompress .png or .jpg data into raw byte arrays.
 
 
+Upon loading, the manager guarantees the dual-dispatch of geometry: vertices are sent to the GPU for the ForwardRendererPass, and simultaneously preserved in standard CPU memory (std::vector) to feed the Physics pipeline.
 
-GPU Upload: Describe the OpenGL lifecycle: glGenTextures -> glTexImage2D -> glGenerateMipmap.
 
 
+4\. The Physics \& Collision Pipeline
 
-Texture Slots: Mention how your renderer assigns these textures to specific samplers (e.g., GL\_TEXTURE0) so the shaders can access Diffuse or Specular maps.
+The engine uses a custom continuous-collision-detection (CCD) capable pipeline, executed sequentially during the Player::Update() step.
 
 
 
-3\. The Entity-Based Logic
+Phase 1: Broadphase (AABB vs AABB)
 
-Even if you aren't using a "pure" Data-Oriented ECS, an Entity-based approach is a major structural win.
 
 
+The engine dynamically calculates the WorldAABB of an Object using its cached ModelMatrix and its pre-calculated localAABB.
 
-Composition over Inheritance
 
-Describe your Entity class as a container.
 
+It tests this against the Player's AABB. Objects failing the overlap test are discarded instantly, bypassing matrix math for hidden geometry.
 
 
-Component-Lite: Explain that an Entity is defined by what it has (a Mesh, a Transform, a Texture) rather than what it is. This makes your engine flexible; you can turn any object into a "light source" or a "player" simply by swapping data.
 
+Phase 2: Narrowphase (Sphere vs Triangle)
 
 
-4\. The Integrated Message Bus Flow
 
-This is the most "architectural" part of the document—showing how your specific systems talk to each other.
+Objects passing the Broadphase have their individual triangles extracted, transformed into World Space, and tested mathematically against the Player's collision Sphere.
 
 
 
-Example Scenario: Spawning a Textured Object
+Phase 3: Collision Resolution \& Slide
 
 
 
-UI (Editor): Sends an ObjectSpawnedMessage via the MessageBus.
+Upon a positive hit, the exact penetration depth is calculated. The player's position is immediately pushed along the collision normal (Depenetration).
 
 
 
-App/Resource System: Receives the message, tells STB to load the texture, and tells the MeshManager to load the geometry.
+Residual velocity directed into the wall is zeroed out, creating a smooth "wall-slide" effect.
 
 
 
-Entity System: Creates a new Entity, attaches the Mesh and Texture.
+The collision normal's Y-axis is analyzed (pushNormal.y > 0.5f) to determine if the surface is walkable, dynamically setting the isGrounded state to allow jumping.
 
 
 
-Forward Renderer: The next frame, the renderer sees the new Entity in the list and applies the Blinn-Phong shader to it using the newly loaded texture.
+5\. Event System
 
+The engine communicates across discrete systems using a Publisher/Subscriber paradigm via a MessageBus.
 
 
-5\. Suggested Table of Contents for your Document
 
-If you want this to look like a professional tech manual, use this order:
-
-
-
-Introduction: Goals of the engine.
-
-
-
-The Message Bus: The nervous system (Asynchronous event handling).
-
-
-
-Entity Management: The skeletal structure (Composition-based entities).
-
-
-
-Resource Pipeline: The circulatory system (STB\_Image, MeshManager).
-
-
-
-Rendering Backend: The visual system (Forward Rendering, Blinn-Phong, GLSL).
-
-
-
-The Editor Layer: The interface (ImGui, Data Caching).
+Example: UI commands trigger an ObjectSpawnedMessage. The Bus alerts the active Scene, which calls the MeshManager, generates the Object, and pushes it to the renderer and physics loop without hard-coupling the UI to the Scene logic.
 

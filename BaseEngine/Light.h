@@ -14,10 +14,8 @@ struct LightCreateInfo
 	glm::vec3 color = glm::vec3(1.0f);
 	float strenght = 1.0f;
 
-	// optional for directional / spot
 	glm::vec3 direction = glm::vec3(0.0f, -1.0f, 0.0f);
 
-	// Spot parameters (degrees)
 	float cutoff = 12.5f;        // inner cone angle
 	float outerCutoff = 17.5f;   // outer cone angle
 

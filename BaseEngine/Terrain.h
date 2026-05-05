@@ -2,19 +2,16 @@
 #include <vector>
 #include <glm/glm/glm.hpp>
 
-class Shader; // Forward declaration
+class Shader; 
 
 class Terrain {
 public:
-    // width and depth are the number of vertices. scale is the distance between vertices.
     Terrain(int width, int depth, float scale);
     ~Terrain();
 
     void Render(Shader& shader, const glm::mat4& viewProj);
 
-    // THIS IS THE MAGIC METHOD FOR PHYSICS:
-    // Pass in the player's X and Z, and it returns the Y height of the floor.
-    float GetHeightAt(float x, float z) const;
+    float GetTriangleHeightAt(float x, float z) const;
 
 private:
     void GenerateMesh();

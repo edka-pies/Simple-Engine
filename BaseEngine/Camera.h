@@ -34,7 +34,7 @@ public:
 
     Transform localTransform;
 
-    // Movement API (FPS-style)
+    // Movement API
     enum Movement { FORWARD, BACKWARD, LEFT, RIGHT, UP, DOWN };
     void ProcessKeyboard(Movement direction, float deltaTime);
     void ProcessMouseMovement(float xoffset, float yoffset, bool constrainPitch = true);
@@ -46,7 +46,7 @@ private:
     glm::vec3 target;
     glm::vec3 up;
 
-    // FPS-style camera vectors & angles
+    // camera vectors & angles
     glm::vec3 front;
     glm::vec3 right;
     float yaw;

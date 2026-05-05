@@ -3,12 +3,14 @@
 #include "Shader.h"
 #include "Texture.h"
 #include "Loader.h"
+#include "PhysicsUtils.h"
 #include <GLFW/Include/glfw3.h>
 #include <iostream>
 #include <fstream>
 #include <sstream> 
 #include <map>
 #include <array>
+#include <memory>
 
 Mesh::Mesh() : VAO(0), VBO(0), EBO(0), myTexture(nullptr), vertexStride(3)
 {
@@ -154,26 +156,19 @@ void Mesh::SetIndexData(const std::vector<Face> faceData)
 
 void Mesh::Render(Shader& shader, const glm::mat4& viewProjectionMatrix)
 {
-	if (transformDirtyFlag)
-	{
-		localMatrix = localTransform.mat4();
-		transformDirtyFlag = false;
-	}
+	shader.SetMatrix(viewProjectionMatrix, "modelMatrix");
 
-	// upload per-object model matrix (vertex shader expects modelMatrix; view/proj provided by renderer)
-	shader.SetMatrix(localMatrix, "modelMatrix");
-
-	// Texture: bind to unit 0 and tell shader to use it
+	// Texture: bind to unit 0
 	if (myTexture != nullptr && myTexture->textureObject != 0)
 	{
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, myTexture->textureObject);
-		shader.SetInt(0, "diffuseTexture"); // sampler uses texture unit 0
-		shader.SetInt(1, "useTexture");     // enable texture sampling
+		shader.SetInt(0, "diffuseTexture"); 
+		shader.SetInt(1, "useTexture");   
 	}
 	else
 	{
-		shader.SetInt(0, "useTexture");     // disable texture sampling
+		shader.SetInt(0, "useTexture");    
 	}
 
 	glBindVertexArray(VAO);
@@ -189,11 +184,11 @@ void Mesh::Render(Shader& shader, const glm::mat4& viewProjectionMatrix)
 
 	glBindVertexArray(0);
 
-	// Unbind texture and restore shader uniform state
+	// Unbind texture
 	if (myTexture != nullptr && myTexture->textureObject != 0)
 	{
 		glBindTexture(GL_TEXTURE_2D, 0);
-		shader.SetInt(0, "useTexture"); // disable for following draws
+		shader.SetInt(0, "useTexture");
 	}
 }
 
@@ -204,135 +199,16 @@ void Mesh::CleanUp()
 	if (EBO != 0) { glDeleteBuffers(1, &EBO); EBO = 0; }
 }
 
-void Mesh::SetRotation(const glm::vec3& newRotation)
-{
-	localTransform.rotation = newRotation;
-	transformDirtyFlag = true;
-}
-
-void Mesh::SetPosition(const glm::vec3& newPosition)
-{
-	localTransform.position = newPosition;
-	transformDirtyFlag = true;
-}
-
-void Mesh::SetScale(const glm::vec3& newScale)
-{
-	localTransform.scale = newScale;
-	transformDirtyFlag = true;
-}
-
-Mesh* Mesh::MakeTriangle()
-{
-	Mesh* mesh = new Mesh();
-
-	mesh->SetVertexData(
-		{
-			-0.5f, -0.5f, 0.0f, 0.0f, 0.0f, 1.0f,
-			0.5f, -0.5f, 0.0f, 0.0f, 1.0f , 0.0f,
-			0.0f,  0.5f, 0.0f, 1.0f, 0.0f, 0.0f
-		}
-	);
-
-	return mesh;
-}
-
-Mesh* Mesh::MakeSquare()
-{
-	Mesh* mesh = new Mesh();
-
-	mesh->SetVertexData(
-		{
-			 0.5f,  0.5f, 0.0f,
-			 0.5f, -0.5f, 0.0f,
-			-0.5f, -0.5f, 0.0f,
-			-0.5f,  0.5f, 0.0f
-		}
-	);
-
-	mesh->SetIndexData(
-		{
-			0, 1, 3,
-			1, 2, 3
-		}
-	);
-
-	return mesh;
-}
-
-Mesh* Mesh::MakeCube()
-{
-	Mesh* mesh = new Mesh();
-
-	mesh->isCube = true;
-
-	mesh->SetVertexData(
-		{
-			// Front face
-		-0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		 0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		-0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-
-		// Back face (Z-)
-		-0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-		-0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-		 0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		 0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-
-		 // Bottom face (Y-)
-		 -0.5f, -0.5f, -0.5f,  0.0f, 1.0f,
-		  0.5f, -0.5f, -0.5f,  1.0f, 1.0f,
-		  0.5f, -0.5f,  0.5f,  1.0f, 0.0f,
-		 -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-
-		 // Top face (Y+)
-		 -0.5f,  0.5f, -0.5f,  0.0f, 0.0f,
-		 -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-		  0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		  0.5f,  0.5f, -0.5f,  1.0f, 0.0f,
-
-		  // Left face (X-)
-		  -0.5f, -0.5f, -0.5f,  1.0f, 0.0f,
-		  -0.5f, -0.5f,  0.5f,  0.0f, 0.0f,
-		  -0.5f,  0.5f,  0.5f,  0.0f, 1.0f,
-		  -0.5f,  0.5f, -0.5f,  1.0f, 1.0f,
-
-		  // Right face (X+)
-		   0.5f, -0.5f, -0.5f,  0.0f, 0.0f,
-		   0.5f,  0.5f, -0.5f,  0.0f, 1.0f,
-		   0.5f,  0.5f,  0.5f,  1.0f, 1.0f,
-		   0.5f, -0.5f,  0.5f,  1.0f, 0.0f
-		}
-	);
-
-	mesh->SetIndexData(
-		{
-			// Front face
-		0, 2, 1, 2, 0, 3,
-		// Back face
-		4, 6, 5, 6, 4, 7,
-		// Bottom face
-		8, 10, 9, 10, 8, 11,
-		// Top face
-		12, 14, 13, 14, 12, 15,
-		// Left face
-		16, 18, 17, 18, 16, 19,
-		// Right face
-		20, 22, 21, 22, 20, 23
-		}
-	);
-
-	return mesh;
-}
-
 std::shared_ptr<Mesh> Mesh::CreateModelFromFile(const std::string& filePath)
 {
 	Loader loader{};
 	loader.LoadModel(filePath);
 	std::shared_ptr<Mesh> resultMesh = std::make_shared<Mesh>();
 	resultMesh->SetVertexData(loader.vertices);
+	resultMesh->vertices = loader.vertices;
 	resultMesh->SetIndexData(loader.indices);
+	resultMesh->indices = loader.indices;
+	resultMesh->localAABB = CalculateLocalAABB(loader.vertices);
 	return resultMesh;
 }
 
@@ -340,7 +216,6 @@ std::shared_ptr<Mesh> Mesh::CreateModelFromFile(const std::string& filePath)
 void Mesh::SetTexture(std::shared_ptr<Texture> aTexture)
 {
 	myTexture = aTexture;
-	// no immediate GL calls here; texture is bound at render time
 }
 
 std::shared_ptr<Texture> Mesh::GetTexture() 

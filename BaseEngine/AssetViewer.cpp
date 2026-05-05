@@ -5,6 +5,8 @@
 #include "MessageBus.h"
 #include "Scene.h"
 #include "Light.h"
+#include "MeshManager.h"
+#include "Primitives.h"
 #include "UITools.h"
 #include "Camera.h"
 #include "Texture.h"
@@ -35,7 +37,6 @@ void AssetViewer::Init()
 	if (!masterObjectList) return;
 
 	objectDataList.clear();
-	// We use a standard for loop to ensure we aren't hitting nulls
 	for (size_t i = 0; i < masterObjectList->size(); ++i)
 	{
 		Object* obj = (*masterObjectList)[i];
@@ -46,13 +47,13 @@ void AssetViewer::Init()
 
 		if (obj->GetMesh())
 		{
-			data.position = obj->GetMesh()->GetTransform().position;
-			data.eulerRotation = obj->GetMesh()->GetTransform().rotation;
-			data.scale = obj->GetMesh()->GetTransform().scale;
+			data.position = obj->GetTransform().position;
+			data.eulerRotation = obj->GetTransform().rotation;
+			data.scale = obj->GetTransform().scale;
 		}
 		data.isInitialized = true;
 
-		objectDataList.push_back(data); // This populates the list
+		objectDataList.push_back(data); 
 	}
 }
 
@@ -70,7 +71,6 @@ void AssetViewer::Draw()
 	{
 		Init();
 
-		// Check if our selected object is still in the new master list
 		bool stillExists = false;
 		for (Object* obj : *masterObjectList)
 		{
@@ -80,7 +80,6 @@ void AssetViewer::Draw()
 			}
 		}
 
-		// Only collapse the UI if the object was deleted
 		if (!stillExists) {
 			selectedObject = nullptr;
 			currentData = nullptr;
@@ -88,6 +87,46 @@ void AssetViewer::Draw()
 	}
 
 	ImGui::Begin("Asset Viewer");
+
+	if (activeScene != nullptr)
+	{
+		if (activeScene->isPlaying) {
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Red
+			if (ImGui::Button("STOP MODE", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
+				activeScene->isPlaying = false;
+				activeScene->player.position = glm::vec3(30.0f, 10.0f, 10.0f);
+				activeScene->player.velocity = glm::vec3(0.0f);
+			}
+			ImGui::PopStyleColor();
+		}
+		else {
+			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f)); // Green
+			if (ImGui::Button("PLAY MODE", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
+				activeScene->isPlaying = true;
+
+				if (activeScene->player.visualObject == nullptr)
+				{
+					Object* playerAvatar = new Object();
+					playerAvatar->SetName("PlayerAvatar");
+
+					auto startMesh = MeshManager::GetInstance().GetMesh("Assets/Models/plane.obj");
+					playerAvatar->SetMesh(startMesh);
+					activeScene->AddObjects(playerAvatar);
+					masterObjectList->push_back(playerAvatar); 
+					activeScene->player.visualObject = playerAvatar;
+				}
+
+				activeScene->player.position = glm::vec3(30.0f, 10.0f, 10.0f);
+				activeScene->player.velocity = glm::vec3(0.0f);
+
+				if (activeScene->player.visualObject->GetMesh()) {
+					activeScene->player.visualObject->SetPosition(activeScene->player.position);
+				}
+			}
+			ImGui::PopStyleColor();
+		}
+		ImGui::Separator();
+	}
 
 	static char modelPath[256] = "";
 	ImGui::InputText("Model File Path", modelPath, IM_ARRAYSIZE(modelPath));
@@ -102,7 +141,6 @@ void AssetViewer::Draw()
 
 		if (ImGui::Button(buttonLabel.c_str()))
 		{
-			// SYNC CHECK: If for some reason the data list is smaller than the object list, fix it
 			if (objectDataList.size() != masterObjectList->size())
 			{
 				Init();
@@ -110,7 +148,6 @@ void AssetViewer::Draw()
 
 			selectedObject = object;
 
-			// SAFE ACCESS: Only assign if the index is valid
 			if (i < (int)objectDataList.size())
 			{
 				currentData = &objectDataList[i];
@@ -147,7 +184,7 @@ void AssetViewer::Draw()
 				glm::vec3& newPosition = currentData->position;
 				if (ImGui::InputFloat3("Position", &newPosition.x))
 				{
-					selectedObject->GetMesh()->SetPosition(newPosition);
+					selectedObject->SetPosition(newPosition);
 				}
 				ImGui::SameLine();
 			}
@@ -158,7 +195,7 @@ void AssetViewer::Draw()
 				glm::vec3& newRotation = currentData->eulerRotation;
 				if (ImGui::InputFloat3("Rotation", &newRotation.x, "%.3f"))
 				{
-					selectedObject->GetMesh()->SetRotation(newRotation);
+					selectedObject->SetRotation(newRotation);
 				}
 				ImGui::SameLine();
 			}
@@ -169,7 +206,7 @@ void AssetViewer::Draw()
 				glm::vec3& newScale = currentData->scale;
 				if (ImGui::InputFloat3("Scale", &newScale.x))
 				{
-					selectedObject->GetMesh()->SetScale(newScale);
+					selectedObject->SetScale(newScale);
 				}
 				ImGui::SameLine();
 			}
@@ -184,7 +221,6 @@ void AssetViewer::Draw()
 		{
 			if (strlen(texturePath) > 0)
 			{
-				// No local initialization needed!
 				auto tex = TextureManager::GetInstance().GetTexture(texturePath);
 
 				if (selectedObject->GetMesh())
@@ -193,15 +229,31 @@ void AssetViewer::Draw()
 				}
 			}
 		}
+		ImGui::Separator();
+		ImGui::Text("Mesh Data");
+
+		static char meshPathBuffer[256] = "Assets/Models/plane.obj";
+		ImGui::InputText("New Mesh Path", meshPathBuffer, sizeof(meshPathBuffer));
+
+		if (ImGui::Button("Change Mesh"))
+		{
+			std::string newPath(meshPathBuffer);
+
+			auto msg = std::make_unique<ChangeMeshMessage>(selectedObject, newPath);
+			MessageBus::GetInstance().EnqueueMessage(std::move(msg)); 
+		}
 	}
+	if (ImGui::Button("Spawn Cube"))
+	{
+		auto msg = std::make_unique<PrimitiveSpawnedMessage>(PrimitiveShape::Cube);
+		MessageBus::GetInstance().EnqueueMessage(std::move(msg));
+	}
+
 	if (ImGui::Button("Spawn New Model"))
 	{
 		if (strlen(modelPath) > 0)
 		{
-			// 2. Package the request into a message
 			auto msg = std::make_unique<ObjectSpawnedMessage>(modelPath);
-
-			// 3. Drop it in the post box
 			MessageBus::GetInstance().EnqueueMessage(std::move(msg));
 		}
 	}
@@ -210,11 +262,9 @@ void AssetViewer::Draw()
 	{
 		if (selectedObject && activeScene)
 		{
-			// 1. Send the message
 			auto msg = std::make_unique<ObjectDeletedMessage>(selectedObject);
 			MessageBus::GetInstance().EnqueueMessage(std::move(msg));
 
-			// 2. Immediately clear the UI pointers so we don't try to draw a ghost
 			selectedObject = nullptr;
 			currentData = nullptr;
 		}
@@ -226,26 +276,39 @@ void AssetViewer::Draw()
 		ImGui::SameLine();
 		if (ImGui::Button("Add Directional"))
 			MessageBus::GetInstance().EnqueueMessage(std::make_unique<CreateLightMessage>(LightType::Directional));
-
+		ImGui::SameLine();
+		if (ImGui::Button("Add Spot Light"))
+			MessageBus::GetInstance().EnqueueMessage(std::make_unique<CreateLightMessage>(LightType::Spot));
 		ImGui::Separator();
 
-		for (size_t i = 0; i < activeScene->lights.size(); i++) {
-			Light* l = activeScene->lights[i];
-			if (ImGui::TreeNode((void*)(intptr_t)i, "Light %d", (int)i)) {
-				ImGui::ColorEdit3("Color", &l->color.x);
-				ImGui::DragFloat("Strength", &l->strenght, 0.1f, 0.0f, 20.0f);
+		if (activeScene != nullptr)
+		{
+			for (size_t i = 0; i < activeScene->lights.size(); i++) {
+				Light* l = activeScene->lights[i];
 
-				if (l->type != LightType::Directional)
-					ImGui::DragFloat3("Position", &l->position.x, 0.1f);
+				if (l == nullptr) continue;
 
-				if (l->type != LightType::Point)
-					ImGui::DragFloat3("Direction", &l->direction.x, 0.01f, -1.0f, 1.0f);
+				if (ImGui::TreeNode((void*)(intptr_t)i, "Light %d", (int)i)) {
+					ImGui::ColorEdit3("Color", &l->color.x);
+					ImGui::DragFloat("Strength", &l->strenght, 0.1f, 0.0f, 20.0f);
 
-				if (ImGui::Button("Delete Light")) {
-					MessageBus::GetInstance().EnqueueMessage(std::make_unique<DeleteLightMessage>(l));
+					if (l->type != LightType::Directional)
+						ImGui::DragFloat3("Position", &l->position.x, 0.1f);
+
+					if (l->type != LightType::Point)
+						ImGui::DragFloat3("Direction", &l->direction.x, 0.01f, -1.0f, 1.0f);
+
+					if (ImGui::Button("Delete Light")) {
+						MessageBus::GetInstance().EnqueueMessage(std::make_unique<DeleteLightMessage>(l));
+					}
+					ImGui::TreePop();
 				}
-				ImGui::TreePop();
 			}
+		}
+		else
+		{
+			// Helpful feedback for you in the editor
+			ImGui::Text("No Active Scene Loaded.");
 		}
 	}
 	if (ImGui::CollapsingHeader("Texture Settings")) {
@@ -259,7 +322,6 @@ void AssetViewer::Draw()
 				else if (current_filter == 1) glFilter = GL_LINEAR;
 				else glFilter = GL_LINEAR_MIPMAP_LINEAR;
 
-				// Apply to the current object's texture
 				if (selectedObject->GetMesh()->GetTexture()) {
 					selectedObject->GetMesh()->GetTexture()->SetFiltering(glFilter);
 				}

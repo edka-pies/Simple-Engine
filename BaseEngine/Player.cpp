@@ -1,15 +1,20 @@
 #include "Player.h"
-void Player::Update(float dt, glm::vec3 inputDir, bool wantJump, const Terrain& terrain) {
-    // 1. Horizontal Movement (Logic)
+#include "Mesh.h"
+void Player::Update(float dt,
+    glm::vec3 inputDir,
+    bool wantJump,
+    const Terrain& terrain,
+    const std::vector<Object*>& sceneObjects) {
+    // Horizontal Movement 
     if (glm::length(inputDir) > 0.1f) {
         velocity.x += inputDir.x * acceleration * dt;
         velocity.z += inputDir.z * acceleration * dt;
     }
     else {
         // Apply friction
-        float drop = glm::length(glm::vec2(velocity.x, velocity.z)) * friction * dt;
-        velocity.x = glm::mix(velocity.x, 0.0f, friction * dt);
-        velocity.z = glm::mix(velocity.z, 0.0f, friction * dt);
+        float decay = glm::exp(-friction * dt);
+        velocity.x *= decay;
+        velocity.z *= decay;
     }
 
     // Clamp horizontal speed
@@ -19,7 +24,7 @@ void Player::Update(float dt, glm::vec3 inputDir, bool wantJump, const Terrain& 
         velocity.z = (velocity.z / speed) * maxSpeed;
     }
 
-    // 2. Gravity & Jumping
+    // Gravity & Jumping
     if (isGrounded) {
         velocity.y = 0;
         if (wantJump) {
@@ -31,11 +36,11 @@ void Player::Update(float dt, glm::vec3 inputDir, bool wantJump, const Terrain& 
         velocity.y += gravity * dt;
     }
 
-    // 3. Integration (Moving the player)
+    // Integration (Moving the player)
     position += velocity * dt;
 
-    // 4. Custom Collision (Terrain snap)
-    float floorY = terrain.GetHeightAt(position.x, position.z);
+    // Custom Collision (Terrain snap)
+    float floorY = terrain.GetTriangleHeightAt(position.x, position.z);
     if (position.y <= floorY) {
         position.y = floorY;
         velocity.y = 0;
@@ -44,10 +49,101 @@ void Player::Update(float dt, glm::vec3 inputDir, bool wantJump, const Terrain& 
     else {
         isGrounded = false;
     }
+
+    // Object Collision (The Physics Loop)
+    // Setup Player Physics Shapes
+    Sphere playerSphere = { position + glm::vec3(0.0f, 1.0f, 0.0f), 1.0f };
+    AABB playerBox = GetPlayerAABB();
+
+    static float debugTimer = 0.0f;
+    debugTimer += dt;
+    bool shouldPrint = false;
+    if (debugTimer > 1.0f) { 
+        shouldPrint = true;
+        debugTimer = 0.0f;
+        std::cout << "\n=== PHYSICS FRAME START ===\n";
+    }
+
+    for (Object* obj : sceneObjects) {
+
+        if (!obj || !obj->GetMesh()) continue;
+        
+        if (visualObject != nullptr && obj == visualObject) {
+            continue;
+        }
+        
+        std::shared_ptr<Mesh> mesh = obj->GetMesh();
+
+        // Check the Local AABB 
+        AABB localBox = mesh->GetLocalAABB();
+
+        // Check the World AABB
+        AABB worldBox = GetWorldAABB(localBox, obj->GetModelMatrix());
+
+        // The Broadphase Check
+        if (!TestAABBAABB(playerBox, worldBox)) {
+            continue;
+        }
+
+        // Broadphase Check
+        if (!TestAABBAABB(playerBox, worldBox)) {
+            continue;
+        }
+
+        // --- NARROWPHASE ---
+        glm::mat4 modelMat = obj->GetModelMatrix();
+        const auto& vertices = mesh->GetVertices();
+        const auto& indices = mesh->GetIndices();
+
+        // Loop through every triangle in the mesh
+        for (size_t i = 0; i < indices.size(); i += 3) {
+            Triangle tri;
+
+            // Convert the local mesh vertices into actual world coordinates
+            tri.a = glm::vec3(modelMat * glm::vec4(vertices[indices[i]].position, 1.0f));
+            tri.b = glm::vec3(modelMat * glm::vec4(vertices[indices[i + 1]].position, 1.0f));
+            tri.c = glm::vec3(modelMat * glm::vec4(vertices[indices[i + 2]].position, 1.0f));
+
+            glm::vec3 hitPoint;
+            if (TestSphereTriangle(playerSphere, tri, hitPoint)) {
+
+                // --- COLLISION RESOLUTION ---
+                // Calculate how deep the player is inside the triangle
+                glm::vec3 pushDir = playerSphere.center - hitPoint;
+                float distance = glm::length(pushDir);
+
+                // Prevent division by zero
+                if (distance > 0.0001f && distance < playerSphere.radius) {
+                    glm::vec3 pushNormal = pushDir / distance; // Normalize
+                    float penetrationDepth = playerSphere.radius - distance;
+
+                    position += pushNormal * penetrationDepth;
+                    playerSphere.center += pushNormal * penetrationDepth;
+
+                    if (pushNormal.y > 0.5f) {
+                        isGrounded = true;
+
+                        // Stop gravity
+                        if (velocity.y < 0.0f) {
+                            velocity.y = 0.0f;
+                        }
+                    }
+                    // Velocity Slide
+                    float velAlongNormal = glm::dot(velocity, pushNormal);
+                    if (velAlongNormal < 0.0f) {
+                        // Subtract the forward momentum going into the wall
+                        velocity -= pushNormal * velAlongNormal;
+                    }
+                }
+            }
+        }
+    }
+    // Sync the puppet (Visual Mesh Update)
+    if (visualObject && visualObject->GetMesh()) {
+        visualObject->SetPosition(position);
+    }
 }
 
 glm::mat4 Player::GetModelMatrix() const {
-    glm::mat4 model = glm::translate(glm::mat4(1.0f), position);
-    // You can add tilt/lean rotation logic here later!
-    return model;
+    return visualObject->GetModelMatrix();
 }

@@ -7,10 +7,12 @@
 #include <glm/glm/glm.hpp>
 #include <GLFW/Include/glfw3.h>
 
-ForwardRendererPass::ForwardRendererPass() : myShader(nullptr)
+ForwardRendererPass::ForwardRendererPass() : 
+    myShader(nullptr)
+    ,shadowShader(nullptr),
+    depthMapFBO(0), depthMap(0)
 {
     myShader = new Shader("Assets/Shaders/VertexShader.glsl", "Assets/Shaders/FragmentShader.glsl");
-    // NEW: Load the shadow shaders (we will write these in Phase 3)
     shadowShader = new Shader("Assets/Shaders/shadow_vertex.glsl", "Assets/Shaders/shadow_fragment.glsl");
 }
 
@@ -38,78 +40,77 @@ void ForwardRendererPass::Init()
     // Attach to FBO
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, depthMap, 0);
-    glDrawBuffer(GL_NONE); // We don't draw colors
-    glReadBuffer(GL_NONE); // We don't read colors
-    glBindFramebuffer(GL_FRAMEBUFFER, 0); // Return to default screen
+    glDrawBuffer(GL_NONE); 
+    glReadBuffer(GL_NONE); 
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); 
 }
 void ForwardRendererPass::Execute(Scene& aScene)
 {
     if (!myShader || !shadowShader) return;
 
-    // 1. Calculate Light Space Matrix (Assuming light[0] is your Directional Sunlight)
+    // Calculate Light Space Matrix
     glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
     if (!aScene.lights.empty()) {
         Light* sun = aScene.lights[0];
 
-        // 1. Determine the center of our shadow box (the Camera or Player)
         glm::vec3 center = glm::vec3(0.0f);
         if (aScene.mainCamera) {
             center = aScene.mainCamera->GetPosition();
-            // Snap to grid to prevent shadow shimmering when moving
-            float shadowRes = 2048.0f; // matches your SHADOW_WIDTH
-            float worldSize = 80.0f;   // matches your ortho size
+            float shadowRes = 2048.0f; 
+            float worldSize = 80.0f;  
             float texelSize = worldSize / shadowRes;
             center.x = floor(center.x / texelSize) * texelSize;
             center.z = floor(center.z / texelSize) * texelSize;
         }
 
-        // 2. Create a larger Ortho Box (e.g., 40 units around the player)
+        // Create a larger Ortho Box
         float size = 40.0f;
         glm::mat4 lightProjection = glm::ortho(-size, size, -size, size, 0.1f, 100.0f);
 
-        // 3. Position the light "camera" looking at the center
+        // Position the light
         glm::vec3 lightPos = center + (-sun->GetDirection() * 50.0f);
         glm::mat4 lightView = glm::lookAt(lightPos, center, glm::vec3(0.0f, 1.0f, 0.0f));
 
         lightSpaceMatrix = lightProjection * lightView;
     }
 
-    auto DrawAllGeometry = [&](Shader& shader) {
-        // 1. Standalone meshes
+    auto DrawAllGeometry = [&](Shader& shader, bool includeTerrain) {
+        // Standalone meshes
         for (auto& mesh : aScene.renderables) {
             if (mesh) mesh->Render(shader, glm::mat4(1.0f));
         }
 
-        // 2. Objects - USE THE REAL MATRIX
+        // Objects
         for (Object* obj : aScene.objects) {
             if (obj && obj->GetMesh()) {
-                // This puts your buildings/fortifications in the right place
-                glm::mat4 realMatrix = obj->GetMesh()->GetModelMatrix();
-
+                glm::mat4 realMatrix = obj->GetModelMatrix();
                 for (auto& mesh : obj->GetRenderables()) {
                     if (mesh) mesh->Render(shader, realMatrix);
                 }
             }
         }
+
+        // Draw the Player if in Play Mode
+        if (aScene.isPlaying && aScene.player.visualObject) {
+            aScene.player.visualObject->GetMesh()->Render(shader, aScene.player.GetModelMatrix());
+        }
+
+        // Terrain
+        if (includeTerrain && aScene.activeTerrain) {
+            aScene.activeTerrain->Render(shader, glm::mat4(1.0f));
+        }
         };
     glViewport(0, 0, SHADOW_WIDTH, SHADOW_HEIGHT);
     glBindFramebuffer(GL_FRAMEBUFFER, depthMapFBO);
-    glClear(GL_DEPTH_BUFFER_BIT); // Only clear depth!
+    glClear(GL_DEPTH_BUFFER_BIT);
 
     shadowShader->Use();
     shadowShader->SetMatrix(lightSpaceMatrix, "lightSpaceMatrix");
     shadowShader->Unuse();
 
-    // ==========================================
-    // PASS 2: Render Scene Normally
-    // ==========================================
-    glBindFramebuffer(GL_FRAMEBUFFER, 0); // Back to screen
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // IMPORTANT: Change 1920, 1080 to your actual Window Width/Height!
     glViewport(0, 0, 1920, 1080);
-
-    // Don't call glClear here if Application.cpp / EngineContext is already doing it!
-    // But if you must: glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     myShader->Use();
 
@@ -127,12 +128,11 @@ void ForwardRendererPass::Execute(Scene& aScene)
     }
     myShader->SetMatrix(lightSpaceMatrix, "lightSpaceMatrix");
 
-    // Bind the Shadow Map to Texture Slot 2
+    // Bind the Shadow Map
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, depthMap);
     myShader->SetInt(2, "shadowMap");
 
-    // Default Material Setters...
     myShader->SetVec4(glm::vec4(0.1f, 0.1f, 0.1f, 1.0f), "materialAmbient");
     myShader->SetVec4(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), "materialDiffuse");
     myShader->SetVec4(glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), "materialSpecular");
@@ -142,11 +142,9 @@ void ForwardRendererPass::Execute(Scene& aScene)
     myShader->SetFloat(1.0f, "textureMixFactor");
     myShader->SetInt(0, "diffuseTexture");
 
-    // Draw everything again with the main shader
-    DrawAllGeometry(*myShader);
+    DrawAllGeometry(*myShader, false);
 
     if (aScene.activeTerrain && aScene.mainCamera) {
-        // You might want to pass a generic diffuse color or a grass texture here
         myShader->SetVec4(glm::vec4(0.2f, 0.8f, 0.2f, 1.0f), "materialDiffuse");
         aScene.activeTerrain->Render(*myShader, aScene.mainCamera->GetViewProjectionMatrix());
     }

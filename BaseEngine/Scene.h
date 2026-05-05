@@ -4,6 +4,7 @@
 #include <map>
 #include "Camera.h"
 #include "Object.h"
+#include "Player.h"
 #include "Terrain.h"
 #include "Renderable.h"
 #include "Light.h"
@@ -30,10 +31,11 @@ public:
 
 	Terrain* activeTerrain = nullptr;
 
+	bool isPlaying = false;
+	Player player;
+
 private:
 	void AddRenderable(std::shared_ptr<Mesh> renderable);
-
-	//std::map<Object*, std::vector<std::shared_ptr<Mesh>>> objectMap;
 
 };
 
