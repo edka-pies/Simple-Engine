@@ -9,6 +9,9 @@
 
 Shader::Shader(const char* vertPath, const char* fragPath)
 {
+    vertexPath = vertPath;
+    fragmentPath = fragPath;
+
     unsigned int VertexShader = LoadVertexShader(vertPath);
     unsigned int FragmentShader = LoadFragmentShader(fragPath);
 
@@ -158,4 +161,46 @@ unsigned int Shader::LoadFragmentShader(const char* aPath)
     }
 
     return shaderObject;
+}
+
+void Shader::Reload()
+{
+    std::cout << "Attempting to reload shaders...\n";
+
+    // Compile the new shaders using the saved paths
+    unsigned int newVertexShader = LoadVertexShader(vertexPath.c_str());
+    unsigned int newFragmentShader = LoadFragmentShader(fragmentPath.c_str());
+
+    // Create and link a temporary new program
+    unsigned int newShaderProgram = glCreateProgram();
+    glAttachShader(newShaderProgram, newVertexShader);
+    glAttachShader(newShaderProgram, newFragmentShader);
+    glLinkProgram(newShaderProgram);
+
+    int success;
+    char infoLog[512];
+    glGetProgramiv(newShaderProgram, GL_LINK_STATUS, &success);
+
+    if (!success) {
+        glGetProgramInfoLog(newShaderProgram, 512, NULL, infoLog);
+        std::cerr << "ERROR::SHADER::PROGRAM::RELOADING_FAILED\n" << infoLog << std::endl;
+
+        // Clean up the broken attempt
+        glDeleteShader(newVertexShader);
+        glDeleteShader(newFragmentShader);
+        glDeleteProgram(newShaderProgram);
+        return;
+    }
+
+    if (shaderProgram != 0) {
+        glDeleteProgram(shaderProgram);
+    }
+
+    // Swap to the new one
+    shaderProgram = newShaderProgram;
+
+    glDeleteShader(newVertexShader);
+    glDeleteShader(newFragmentShader);
+
+    std::cout << "Successfully reloaded: " << vertexPath << " and " << fragmentPath << "\n";
 }

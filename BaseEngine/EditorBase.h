@@ -4,11 +4,11 @@
 #include "imgui/imgui_impl_opengl3.h"
 #include <memory>
 #include <vector>
-#include <GLFW/Include/glfw3.h>
-#include "Scene.h"
+#include "EngineState.h"
 
 class Object;
 class AssetViewer;
+class Scene;
 
 class EditorBase
 {
@@ -20,11 +20,13 @@ public:
 
 	void UpdateAssetViewerList(std::vector<Object*> newList);
 
-	void FrameRun();
+	void FrameRun(GLFWwindow* win);
 
 	void RenderEditor(GLFWwindow* window);
 
 	AssetViewer& GetAssetViewer() { return *assetViewer; }
+
+	EngineState currentState = EngineState::Editor;
 
 private:
 	float mainScale;

@@ -14,12 +14,17 @@ enum class MessageType
     CreateLight,
 	DeleteLight,
     ChangeMesh,
+	LoadLevel,
+    SaveLevel,
 };
 
 enum class PrimitiveShape {
     Cube,
+    Quad,
     Plane,
-    Sphere 
+    Sphere,
+    Cylinder,
+    Capsule
 };
 
 // 2. The Base Message Class
@@ -82,4 +87,16 @@ public:
 
     ChangeMeshMessage(Object* target, const std::string& path)
         : Message(MessageType::ChangeMesh), targetObject(target), newFilePath(path) {}
+};
+
+class LoadLevelMessage : public Message {
+public:
+    std::string levelName;
+    LoadLevelMessage(const std::string& name) : Message(MessageType::LoadLevel), levelName(name) {}
+};
+
+class SaveLevelMessage : public Message {
+public:
+    std::string levelName;
+    SaveLevelMessage(const std::string& name) : Message(MessageType::SaveLevel), levelName(name) {}
 };

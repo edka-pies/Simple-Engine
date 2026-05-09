@@ -1,5 +1,11 @@
 #pragma once
 #include "glm/glm/glm.hpp"
+
+struct Ray {
+    glm::vec3 origin;
+    glm::vec3 direction; // MUST be normalized!
+};
+
 struct AABB {
     glm::vec3 minBounds;
     glm::vec3 maxBounds;
@@ -109,3 +115,29 @@ inline AABB GetWorldAABB(const AABB& localBox, const glm::mat4& modelMatrix) {
 
     return worldBox;
 }
+
+inline bool TestRayAABB(const Ray& ray, const AABB& box, float& hitDistance) {
+    glm::vec3 invDir = 1.0f / ray.direction; // Optimize divisions
+
+    // Calculate intersection distances for X, Y, and Z planes
+    glm::vec3 t0 = (box.minBounds - ray.origin) * invDir;
+    glm::vec3 t1 = (box.maxBounds - ray.origin) * invDir;
+
+    // Ensure tmin is the closest plane and tmax is the furthest
+    glm::vec3 tmin = glm::min(t0, t1);
+    glm::vec3 tmax = glm::max(t0, t1);
+
+    // Find the furthest ENTRY point and the closest EXIT point across all axes
+    float enter = glm::max(glm::max(tmin.x, tmin.y), tmin.z);
+    float exit = glm::min(glm::min(tmax.x, tmax.y), tmax.z);
+
+    // If exit is less than zero, the box is completely behind the camera
+    if (exit < 0.0f) return false;
+
+    // If the entry distance is greater than the exit distance, the ray missed
+    if (enter > exit) return false;
+
+    // We have a hit!
+    hitDistance = enter;
+    return true;
+};

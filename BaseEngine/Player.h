@@ -19,11 +19,30 @@ public:
     float acceleration = 50.0f;
     float friction = 10.0f;
     float maxSpeed = 12.0f;
+    int jumpCount = 0;
+    const int MAX_JUMPS = 2;
     float jumpForce = 10.0f;
+
+    bool isDashing = false;
+    float dashTimer = 0.0f;
+    const float DASH_DURATION = 0.15f;
+
+    float dashCooldownTimer = 0.0f;
+    const float DASH_COOLDOWN = 1.0f;
+
+    float dashSpeed = 40.0f;      
+    glm::vec3 dashDirection = glm::vec3(0.0f, 0.0f, -1.0f);
 
     bool isGrounded = false;
 
-    void Update(float dt, glm::vec3 inputDir, bool wantJump, const Terrain& terrain, const std::vector<Object*>& sceneObjects);
+    void Update(
+        float dt
+        ,glm::vec3 inputDir
+        ,bool wantJump
+        ,bool wantDash
+        ,glm::vec3 cameraForward
+        ,const Terrain& terrain
+        ,const std::vector<Object*>& sceneObjects);
     glm::mat4 GetModelMatrix() const;
     Object* visualObject = nullptr; 
 

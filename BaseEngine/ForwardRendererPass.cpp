@@ -3,6 +3,7 @@
 #include "Renderable.h"
 #include "Mesh.h"
 #include "MeshManager.h"
+#include "Frustum.h"
 #include <memory>
 #include <glm/glm/glm.hpp>
 #include <GLFW/Include/glfw3.h>
@@ -48,6 +49,12 @@ void ForwardRendererPass::Execute(Scene& aScene)
 {
     if (!myShader || !shadowShader) return;
 
+	// Update the Frustum for Culling
+    Frustum cameraFrustum;
+    if (aScene.mainCamera) {
+        cameraFrustum.Update(aScene.mainCamera->GetViewProjectionMatrix());
+    }
+
     // Calculate Light Space Matrix
     glm::mat4 lightSpaceMatrix = glm::mat4(1.0f);
     if (!aScene.lights.empty()) {
@@ -74,23 +81,43 @@ void ForwardRendererPass::Execute(Scene& aScene)
         lightSpaceMatrix = lightProjection * lightView;
     }
 
-    auto DrawAllGeometry = [&](Shader& shader, bool includeTerrain) {
+    auto DrawAllGeometry = [&](Shader& shader, bool includeTerrain, bool performCulling) {
+
         // Standalone meshes
         for (auto& mesh : aScene.renderables) {
             if (mesh) mesh->Render(shader, glm::mat4(1.0f));
         }
 
-        // Objects
+        // Objects 
         for (Object* obj : aScene.objects) {
             if (obj && obj->GetMesh()) {
                 glm::mat4 realMatrix = obj->GetModelMatrix();
+
+				// Frustum Culling
+                if (performCulling) {
+                    glm::vec3 minExt = obj->GetMesh()->localAABB.minBounds;
+                    glm::vec3 maxExt = obj->GetMesh()->localAABB.maxBounds;
+
+                    // Transform local bounding box to world space
+                    glm::vec3 worldMin = realMatrix * glm::vec4(minExt, 1.0f);
+                    glm::vec3 worldMax = realMatrix * glm::vec4(maxExt, 1.0f);
+
+                    // Re-align min/max in case rotation flipped them
+                    glm::vec3 actualMin = (glm::min)(worldMin, worldMax);
+                    glm::vec3 actualMax = (glm::max)(worldMin, worldMax);
+
+                    if (!cameraFrustum.IsBoxVisible(actualMin, actualMax)) {
+                        continue;
+                    }
+                }
+
                 for (auto& mesh : obj->GetRenderables()) {
                     if (mesh) mesh->Render(shader, realMatrix);
                 }
             }
         }
 
-        // Draw the Player if in Play Mode
+        // Draw the Player
         if (aScene.isPlaying && aScene.player.visualObject) {
             aScene.player.visualObject->GetMesh()->Render(shader, aScene.player.GetModelMatrix());
         }
@@ -106,11 +133,13 @@ void ForwardRendererPass::Execute(Scene& aScene)
 
     shadowShader->Use();
     shadowShader->SetMatrix(lightSpaceMatrix, "lightSpaceMatrix");
+    DrawAllGeometry(*shadowShader, false, false);
     shadowShader->Unuse();
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     glViewport(0, 0, 1920, 1080);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     myShader->Use();
 
@@ -142,7 +171,7 @@ void ForwardRendererPass::Execute(Scene& aScene)
     myShader->SetFloat(1.0f, "textureMixFactor");
     myShader->SetInt(0, "diffuseTexture");
 
-    DrawAllGeometry(*myShader, false);
+    DrawAllGeometry(*myShader, false, true);
 
     if (aScene.activeTerrain && aScene.mainCamera) {
         myShader->SetVec4(glm::vec4(0.2f, 0.8f, 0.2f, 1.0f), "materialDiffuse");

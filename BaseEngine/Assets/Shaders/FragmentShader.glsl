@@ -44,20 +44,35 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     vec3 projCoords = fragPosLightSpace.xyz / fragPosLightSpace.w;
     projCoords = projCoords * 0.5 + 0.5;
 
-    // 1. If outside the shadow map box, it's definitely NOT in shadow
     if(projCoords.z > 1.0 || projCoords.x > 1.0 || projCoords.x < 0.0 || projCoords.y > 1.0 || projCoords.y < 0.0)
         return 0.0;
 
     float closestDepth = texture(shadowMap, projCoords.xy).r; 
     float currentDepth = projCoords.z;
 
-    // 2. DYNAMIC BIAS: This is the fix for the dark floor.
     // It adjusts based on the slope of the surface relative to the light.
     float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.0005);  
 
-    // 3. Simple check (start with this to see if it works, then add PCF back)
-    float shadow = currentDepth - bias > closestDepth  ? 1.0 : 0.0;
-  
+    // PCF
+    float shadow = 0.0;
+
+    // Get the size of one pixel 
+    vec2 texelSize = 10.0 / textureSize(shadowMap, 0); 
+
+    // Sample a 3x3 grid around the current pixel
+    for(int x = -1; x <= 1; ++x)
+    {
+        for(int y = -1; y <= 1; ++y)
+        {
+            // Get the depth from the neighboring shadow map pixel
+            float pcfDepth = texture(shadowMap, projCoords.xy + vec2(x, y) * texelSize).r; 
+        
+            // Add 1.0 if this specific neighbor thinks we are in shadow
+            shadow += currentDepth - bias > pcfDepth ? 1.0 : 0.0;        
+        }    
+    }
+    // Average the result
+    shadow /= 9.0;
     return shadow;
 }
 
@@ -85,7 +100,7 @@ void main()
     {
         vec3 L;
         float attenuation = 1.0;
-        float shadow = 0.0; // NEW: Default no shadowtenuation = 1.0;
+        float shadow = 0.0; 
 
         if (light_type[i] == 0) {
             // Point light
@@ -123,11 +138,9 @@ void main()
         float spec = pow(specAngle, float(materialShininess));
         vec3 specular = spec * (light_specular[i].xyz * materialSpecular.xyz);
 
-        // FIXED: Your ambient calculation previously used specular variables.
         vec3 ambient = (light_ambient[i].xyz * materialAmbient.xyz);
 
         ambientSum += ambient;
-        // NEW: Multiply diffuse and specular by (1.0 - shadow)
         diffuseSum += (1.0 - shadow) * diffuse * attenuation;
         specularSum += (1.0 - shadow) *  specular * attenuation;
     }

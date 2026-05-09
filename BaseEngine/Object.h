@@ -37,6 +37,9 @@ public:
 
 	void SetScale(const glm::vec3& newScale);
 
+	void SetMeshFilePath(const std::string& path) { meshFilePath = path; }
+	std::string GetMeshFilePath() const { return meshFilePath; }
+
 	glm::vec3 GetPosition() const { return localTransform.position; }
 	glm::vec3 GetRotation() const { return localTransform.rotation; }
 	glm::vec3 GetScale() const { return localTransform.scale; }
@@ -51,6 +54,8 @@ public:
 
 	inline Transform& GetTransform() { return localTransform; }
 
+	glm::vec3 velocity = glm::vec3(0.0f);
+
 	std::shared_ptr<Mesh> GetMesh();
 private:
 
@@ -60,4 +65,5 @@ private:
 	std::string name;
 	std::shared_ptr<Mesh> mesh;
 	std::vector<std::shared_ptr<Mesh>> renderables;
+	std::string meshFilePath = "";
 };

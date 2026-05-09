@@ -26,62 +26,71 @@ Mesh::~Mesh()
 
 void Mesh::Init()
 {
-	if (vertexBuffer.empty())
-	{
-		return;
-	}
-	else
-	{
-		std::cout << "Vertex floats: " << vertexBuffer.size() << " stride: " << vertexStride << " vertices: " << vertexCount << std::endl;
-	}
+	// Abort if we have neither primitives nor model data
+	if (vertexBuffer.empty() && vertices.empty()) return;
 
 	glGenVertexArrays(1, &VAO);
 	glGenBuffers(1, &VBO);
 
 	glBindVertexArray(VAO);
-
 	glBindBuffer(GL_ARRAY_BUFFER, VBO);
-	glBufferData(GL_ARRAY_BUFFER, vertexBuffer.size() * sizeof(float), vertexBuffer.data(), GL_STATIC_DRAW);
 
+	// --- SCENARIO A: WE ARE LOADING A 3D MODEL (Uses Vertex Struct) ---
+	if (!vertices.empty())
+	{
+		glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), vertices.data(), GL_STATIC_DRAW);
+
+		// Layout 0: Position
+		glEnableVertexAttribArray(0);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, position));
+
+		// Layout 1: UVs (Swapped to match your shader!)
+		glEnableVertexAttribArray(1);
+		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, textureCoord));
+
+		// Layout 2: Normal (Swapped to match your shader!)
+		glEnableVertexAttribArray(2);
+		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, normal));
+
+		// Layout 3: Bone IDs (Notice the 'I' in glVertexAttribIPointer for Integers!)
+		glEnableVertexAttribArray(3);
+		glVertexAttribIPointer(3, MAX_BONE_INFLUENCE, GL_INT, sizeof(Vertex), (void*)offsetof(Vertex, m_BoneIDs));
+
+		// Layout 4: Bone Weights
+		glEnableVertexAttribArray(4);
+		glVertexAttribPointer(4, MAX_BONE_INFLUENCE, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)offsetof(Vertex, m_Weights));
+	}
+	// --- SCENARIO B: WE ARE LOADING A PRIMITIVE (Uses Float Array) ---
+	else
+	{
+		glBufferData(GL_ARRAY_BUFFER, vertexBuffer.size() * sizeof(float), vertexBuffer.data(), GL_STATIC_DRAW);
+
+		if (vertexStride == 5) { // Cube
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
+			glEnableVertexAttribArray(1);
+		}
+		else if (vertexStride == 8) { // Standard Object without bones
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+			glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
+			glEnableVertexAttribArray(1);
+			glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
+			glEnableVertexAttribArray(2);
+		}
+		else { // Basic fallback
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+			glEnableVertexAttribArray(0);
+		}
+	}
+
+	// --- INDICES (Stays exactly the same) ---
 	if (indexSize > 0)
 	{
 		glGenBuffers(1, &EBO);
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
 		glBufferData(GL_ELEMENT_ARRAY_BUFFER, indexBuffer.size() * sizeof(unsigned int), indexBuffer.data(), GL_STATIC_DRAW);
-		std::cout << "Index count: " << indexSize << std::endl;
-	}
-
-	if (vertexStride == 5)
-	{
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 5 * sizeof(float), (void*)(3 * sizeof(float)));
-		glEnableVertexAttribArray(1);
-	}
-	else if (vertexStride == 8)
-	{
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-
-		glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(3 * sizeof(float)));
-		glEnableVertexAttribArray(1);
-
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 8 * sizeof(float), (void*)(5 * sizeof(float)));
-		glEnableVertexAttribArray(2);
-	}
-	else if (vertexStride == 6)
-	{
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-
-		glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-		glEnableVertexAttribArray(2);
-	}
-	else
-	{
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
 	}
 
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
@@ -114,25 +123,12 @@ void Mesh::SetVertexData(const std::vector<float>& vertexData)
 
 void Mesh::SetVertexData(const std::vector<Vertex>& vertexData)
 {
+	// Clear the float buffer because we are using the Struct instead!
 	vertexBuffer.clear();
-	vertexBuffer.reserve(vertexData.size() * 8); 
 
-	for (const Vertex& vertices : vertexData)
-	{
-		vertexBuffer.push_back(vertices.position.x);
-		vertexBuffer.push_back(vertices.position.y);
-		vertexBuffer.push_back(vertices.position.z);
-
-		vertexBuffer.push_back(vertices.textureCoord.x);
-		vertexBuffer.push_back(vertices.textureCoord.y);
-
-		vertexBuffer.push_back(vertices.normal.x);
-		vertexBuffer.push_back(vertices.normal.y);
-		vertexBuffer.push_back(vertices.normal.z);
-	}
-
-	vertexStride = 8;
-	vertexCount = static_cast<unsigned int>(vertexBuffer.size() / vertexStride);
+	// Save the raw structs
+	vertices = vertexData;
+	vertexCount = static_cast<unsigned int>(vertices.size());
 }
 
 void Mesh::SetIndexData(const std::vector<unsigned int>& indexData)

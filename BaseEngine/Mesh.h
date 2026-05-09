@@ -1,4 +1,5 @@
 #pragma once
+#include <map>
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -10,12 +11,40 @@
 #include "ComponentRender.h"
 #include "Texture.h"
 #include "MemoryCheck.h"
+//#include <glm/glm/glm.hpp>
+
+#define MAX_BONE_INFLUENCE 4
+
+struct BoneInfo {
+	int id;               // The index we will send to the GPU
+	glm::mat4 offset;     // The Inverse Bind Matrix from Assimp
+};
 
 struct Vertex
 {
 	glm::vec3 position;
 	glm::vec3 normal;
 	glm::vec2 textureCoord;
+
+	int m_BoneIDs[MAX_BONE_INFLUENCE]; // Which bones affect this vertex?
+	float m_Weights[MAX_BONE_INFLUENCE]; // How much does each bone affect it?
+
+	// Constructor to initialize empty weights
+	Vertex() {
+		for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
+			m_BoneIDs[i] = -1; // -1 means "No bone assigned"
+			m_Weights[i] = 0.0f;
+		}
+	}
+
+	Vertex(glm::vec3 p, glm::vec3 n, glm::vec2 uv)
+		: position(p), normal(n), textureCoord(uv)
+	{
+		for (int i = 0; i < MAX_BONE_INFLUENCE; i++) {
+			m_BoneIDs[i] = -1;
+			m_Weights[i] = 0.0f;
+		}
+	}
 
 	bool operator<(const Vertex& other) const
 	{
@@ -117,6 +146,9 @@ protected:
 	bool transformDirtyFlag = true;
 	bool isCube = false;
 	bool isHouse = false;
+
+	std::map<std::string, BoneInfo> m_BoneInfoMap;
+	int m_BoneCounter = 0;
 
 	std::shared_ptr<Texture> myTexture;
 };

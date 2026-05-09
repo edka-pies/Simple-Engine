@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <glm/glm/glm.hpp>
+#include <glm/glm/gtc/type_ptr.hpp>
 #include "Scene.h"
 
 class Shader
@@ -11,6 +12,7 @@ public:
 
 	void Use();
 	void Unuse();
+	void Reload();
 
 	void SetMatrix(const glm::mat4& aMatrix, const std::string& aName);
 
@@ -28,5 +30,8 @@ public:
 private:
 	unsigned int shaderProgram = 0;
 	static const int MAX_LIGHTS = 8;
+
+	std::string vertexPath;
+	std::string fragmentPath;
 };
 

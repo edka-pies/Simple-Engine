@@ -88,46 +88,6 @@ void AssetViewer::Draw()
 
 	ImGui::Begin("Asset Viewer");
 
-	if (activeScene != nullptr)
-	{
-		if (activeScene->isPlaying) {
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f)); // Red
-			if (ImGui::Button("STOP MODE", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
-				activeScene->isPlaying = false;
-				activeScene->player.position = glm::vec3(30.0f, 10.0f, 10.0f);
-				activeScene->player.velocity = glm::vec3(0.0f);
-			}
-			ImGui::PopStyleColor();
-		}
-		else {
-			ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f)); // Green
-			if (ImGui::Button("PLAY MODE", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
-				activeScene->isPlaying = true;
-
-				if (activeScene->player.visualObject == nullptr)
-				{
-					Object* playerAvatar = new Object();
-					playerAvatar->SetName("PlayerAvatar");
-
-					auto startMesh = MeshManager::GetInstance().GetMesh("Assets/Models/plane.obj");
-					playerAvatar->SetMesh(startMesh);
-					activeScene->AddObjects(playerAvatar);
-					masterObjectList->push_back(playerAvatar); 
-					activeScene->player.visualObject = playerAvatar;
-				}
-
-				activeScene->player.position = glm::vec3(30.0f, 10.0f, 10.0f);
-				activeScene->player.velocity = glm::vec3(0.0f);
-
-				if (activeScene->player.visualObject->GetMesh()) {
-					activeScene->player.visualObject->SetPosition(activeScene->player.position);
-				}
-			}
-			ImGui::PopStyleColor();
-		}
-		ImGui::Separator();
-	}
-
 	static char modelPath[256] = "";
 	ImGui::InputText("Model File Path", modelPath, IM_ARRAYSIZE(modelPath));
 
@@ -246,6 +206,31 @@ void AssetViewer::Draw()
 	if (ImGui::Button("Spawn Cube"))
 	{
 		auto msg = std::make_unique<PrimitiveSpawnedMessage>(PrimitiveShape::Cube);
+		MessageBus::GetInstance().EnqueueMessage(std::move(msg));
+	}
+	if (ImGui::Button("Spawn Quad"))
+	{
+		auto msg = std::make_unique<PrimitiveSpawnedMessage>(PrimitiveShape::Quad);
+		MessageBus::GetInstance().EnqueueMessage(std::move(msg));
+	}
+	if (ImGui::Button("Spawn Plane"))
+	{
+		auto msg = std::make_unique<PrimitiveSpawnedMessage>(PrimitiveShape::Plane);
+		MessageBus::GetInstance().EnqueueMessage(std::move(msg));
+	}
+	if (ImGui::Button("Spawn Sphere"))
+	{
+		auto msg = std::make_unique<PrimitiveSpawnedMessage>(PrimitiveShape::Sphere);
+		MessageBus::GetInstance().EnqueueMessage(std::move(msg));
+	}
+	if (ImGui::Button("Spawn Cylinder"))
+	{
+		auto msg = std::make_unique<PrimitiveSpawnedMessage>(PrimitiveShape::Cylinder);
+		MessageBus::GetInstance().EnqueueMessage(std::move(msg));
+	}
+	if (ImGui::Button("Spawn Capsule"))
+	{
+		auto msg = std::make_unique<PrimitiveSpawnedMessage>(PrimitiveShape::Capsule);
 		MessageBus::GetInstance().EnqueueMessage(std::move(msg));
 	}
 

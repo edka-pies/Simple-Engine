@@ -24,7 +24,7 @@ void main()
     // world-space position
     position = (modelMatrix * vec4(inPosition, 1.0)).xyz;
 
-    // Transform normal to world space. Use inverse-transpose when model has non-uniform scale.
+    // Transform normal to world space
     v_normal = normalize(mat3(transpose(inverse(modelMatrix))) * inNormal);
 
     UV_Coord = inUV;

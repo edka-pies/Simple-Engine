@@ -28,6 +28,8 @@ public:
     float GetNearPlane() const;
     float GetFarPlane() const;
 
+	glm::vec3 GetFront() const { return front; }
+
     inline const glm::mat4& GetViewProjectionMatrix() const { return viewProjectionMatrix; }
 
     void Update();

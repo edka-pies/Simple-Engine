@@ -3,6 +3,7 @@
 #include <vector>
 #include "Light.h"
 #include "CameraManager.h"
+#include "EditorBase.h"
 
 class Object;
 class Renderer;
@@ -41,6 +42,8 @@ private:
 	void CleanUp();
 	void KeyCallback();
 	void MouseCallback();
+	void SaveLevel(const std::string& filename);
+	void LoadLevel(const std::string& filename);
 
 	void SetupSubscriptions();
 
@@ -50,6 +53,8 @@ private:
 	void HandleCreateLight();
 	void HandleDeleteLight();
 	void HandlePrimitiveSpawned();
+	void HandleLoadLevel();
+	void HandleSaveLevel();
 
 	std::vector<Object*> masterObjectList;
 	Window* window;

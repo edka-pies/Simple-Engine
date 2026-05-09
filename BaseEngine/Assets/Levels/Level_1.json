@@ -1,0 +1,64 @@
+{
+    "level": {
+        "bestTime": 2.6678504943847656
+    },
+    "objects": [
+        {
+            "meshPath": "Assets/Models/FortificationsLevel5.obj",
+            "name": "FinishLine",
+            "posX": 20.0,
+            "posY": 0.0,
+            "posZ": 0.0,
+            "rotX": 0.0,
+            "rotY": 0.0,
+            "rotZ": 0.0,
+            "scaleX": 1.0,
+            "scaleY": 1.0,
+            "scaleZ": 1.0
+        },
+        {
+            "meshPath": "Primitive_Capsule",
+            "name": "Enemy",
+            "posX": 0.0,
+            "posY": 0.0,
+            "posZ": 0.0,
+            "rotX": 0.0,
+            "rotY": 0.0,
+            "rotZ": 0.0,
+            "scaleX": 1.0,
+            "scaleY": 1.0,
+            "scaleZ": 1.0
+        },
+        {
+            "meshPath": "Primitive_Cube",
+            "name": "Primitive Cube",
+            "posX": 10.0,
+            "posY": 5.0,
+            "posZ": 10.0,
+            "rotX": 0.0,
+            "rotY": 0.0,
+            "rotZ": 0.0,
+            "scaleX": 10.0,
+            "scaleY": 20.0,
+            "scaleZ": 1.0
+        },
+        {
+            "meshPath": "Primitive_Quad",
+            "name": "Platform",
+            "posX": 10.0,
+            "posY": 5.0,
+            "posZ": 30.0,
+            "rotX": 0.0,
+            "rotY": 0.0,
+            "rotZ": 0.0,
+            "scaleX": 1.0,
+            "scaleY": 1.0,
+            "scaleZ": 1.0
+        }
+    ],
+    "player": {
+        "posX": 1.3823350667953491,
+        "posY": 0.8560372591018677,
+        "posZ": 10.335204124450684
+    }
+}

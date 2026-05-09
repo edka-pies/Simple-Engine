@@ -102,12 +102,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\;$(SolutionDir)Dependencies\Assimp\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;$(SolutionDir)Library\$(Configuration)\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(SolutionDir)Library\$(Configuration)\glfw3.lib;$(SolutionDir)Dependencies\Assimp\lib\assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\Assimp\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -118,12 +119,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\;$(SolutionDir)Dependencies\Assimp\lib;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;$(SolutionDir)Library\$(Configuration)\glfw3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;$(SolutionDir)Library\$(Configuration)\glfw3.lib;$(SolutionDir)Dependencies\Assimp\lib\assimp-vc145-mt.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>$(SolutionDir)Dependencies\Assimp\lib</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -143,6 +145,7 @@
     <ClCompile Include="ComponentScene.cpp" />
     <ClCompile Include="Demo.cpp" />
     <ClCompile Include="EditorBase.cpp" />
+    <ClCompile Include="Enemy.cpp" />
     <ClCompile Include="EngineContext.cpp" />
     <ClCompile Include="ForwardRenderer.cpp" />
     <ClCompile Include="ForwardRendererPass.cpp" />
@@ -157,8 +160,10 @@
     <ClCompile Include="MeshManager.cpp" />
     <ClCompile Include="MessageBus.cpp" />
     <ClCompile Include="Object.cpp" />
+    <ClCompile Include="Platform.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="Primitives.cpp" />
+    <ClCompile Include="RagdollEntity.cpp" />
     <ClCompile Include="Renderable.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="RenderPass.cpp" />
@@ -185,9 +190,12 @@
     <ClInclude Include="Demo.h" />
     <ClInclude Include="EditorBase.h" />
     <ClInclude Include="EditorCore.h" />
+    <ClInclude Include="Enemy.h" />
     <ClInclude Include="EngineContext.h" />
+    <ClInclude Include="EngineState.h" />
     <ClInclude Include="ForwardRenderer.h" />
     <ClInclude Include="ForwardRendererPass.h" />
+    <ClInclude Include="Frustum.h" />
     <ClInclude Include="GameObject.h" />
     <ClInclude Include="Light.h" />
     <ClInclude Include="Loader.h" />
@@ -201,8 +209,10 @@
     <ClInclude Include="MessageBus.h" />
     <ClInclude Include="Object.h" />
     <ClInclude Include="PhysicsUtils.h" />
+    <ClInclude Include="Platform.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Primitives.h" />
+    <ClInclude Include="RagdollEntity.h" />
     <ClInclude Include="Renderable.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="RenderPass.h" />
