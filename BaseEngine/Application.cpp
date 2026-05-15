@@ -513,7 +513,7 @@ void Application::LoadLevel(const std::string& filename) {
 			if (newObj->GetName() == "Enemy") {
 				Enemy* newEnemy = new Enemy();
 				newEnemy->visualObject = newObj;
-				newEnemy->position = newObj->GetTransform().position; // Start where placed in Editor!
+				//newEnemy->AddComponent(std::make_shared<AIComponent>(playerBrain));
 				scene->enemies.push_back(newEnemy);
 			}
 
