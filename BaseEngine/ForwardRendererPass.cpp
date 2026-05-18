@@ -1,11 +1,12 @@
 #include "ForwardRendererPass.h"
 #include "Scene.h"
 #include "Renderable.h"
-#include "Mesh.h"
 #include "MeshManager.h"
 #include "Frustum.h"
+#include "MeshComponent.h"
 #include <memory>
 #include <glm/glm/glm.hpp>
+#include "CollisionComponent.h"
 #include <GLFW/Include/glfw3.h>
 
 ForwardRendererPass::ForwardRendererPass() : 
@@ -83,20 +84,29 @@ void ForwardRendererPass::Execute(Scene& aScene)
 
     auto DrawAllGeometry = [&](Shader& shader, bool includeTerrain, bool performCulling) {
 
-        // Standalone meshes
+        // Standalone meshes (If you are still using aScene.renderables)
+        // NOTE: If you deleted the Renderable class, you might need to change aScene.renderables to store Mesh* instead.
         for (auto& mesh : aScene.renderables) {
-            if (mesh) mesh->Render(shader, glm::mat4(1.0f));
+            if (mesh) {
+                shader.SetMatrix(glm::mat4(1.0f), "modelMatrix");
+                mesh->Draw(shader); // Changed from Render to Draw!
+            }
         }
 
         // Objects 
         for (Object* obj : aScene.objects) {
-            if (obj && obj->GetMesh()) {
+
+            auto meshComp = obj->GetComponent<MeshComponent>();
+            if (obj && meshComp && meshComp->mesh) {
+
+                // Assuming you renamed this to GetTransformMatrix() based on our previous step!
+                // If it is still GetModelMatrix() in your Object class, leave it as GetModelMatrix().
                 glm::mat4 realMatrix = obj->GetModelMatrix();
 
-				// Frustum Culling
+                // Frustum Culling
                 if (performCulling) {
-                    glm::vec3 minExt = obj->GetMesh()->localAABB.minBounds;
-                    glm::vec3 maxExt = obj->GetMesh()->localAABB.maxBounds;
+                    glm::vec3 minExt = meshComp->mesh->localAABB.minBounds;
+                    glm::vec3 maxExt = meshComp->mesh->localAABB.maxBounds;
 
                     // Transform local bounding box to world space
                     glm::vec3 worldMin = realMatrix * glm::vec4(minExt, 1.0f);
@@ -111,19 +121,18 @@ void ForwardRendererPass::Execute(Scene& aScene)
                     }
                 }
 
-                for (auto& mesh : obj->GetRenderables()) {
-                    if (mesh) mesh->Render(shader, realMatrix);
-                }
+                // --- THE ECS FIX ---
+                // 1. Tell the shader where the object is
+                shader.SetMatrix(realMatrix, "modelMatrix");
+                // 2. Tell the mesh to draw itself
+                meshComp->mesh->Draw(shader);
             }
-        }
-
-        // Draw the Player
-        if (aScene.isPlaying && aScene.player.visualObject) {
-            aScene.player.visualObject->GetMesh()->Render(shader, aScene.player.GetModelMatrix());
         }
 
         // Terrain
         if (includeTerrain && aScene.activeTerrain) {
+            // If you haven't refactored Terrain yet, leave this as Render. 
+            // If you have refactored it, change it to follow the same pattern!
             aScene.activeTerrain->Render(shader, glm::mat4(1.0f));
         }
         };

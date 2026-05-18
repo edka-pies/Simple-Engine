@@ -4,6 +4,7 @@
 #include "imgui/imgui_impl_opengl3.h"
 #include <memory>
 #include <vector>
+#include <string>
 #include "EngineState.h"
 
 class Object;
@@ -33,4 +34,5 @@ private:
 	ImGuiIO* ioPtr;
 	std::unique_ptr<AssetViewer> assetViewer;
 	Scene* scene;
+	std::string currentLoadedLevel = "";
 };

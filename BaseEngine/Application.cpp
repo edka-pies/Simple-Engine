@@ -5,18 +5,25 @@
 #include "MeshManager.h"
 #include "Primitives.h"
 #include "AssetViewer.h"
-#include "RagdollEntity.h"
+#include "ActiveRagdollComponent.h"
+#include "Component.h"
 #include "Scene.h"
 #include "Object.h"
 #include "Window.h"
 #include "Light.h"
-#include "Platform.h"
 #include "MessageBus.h"
 #include <glm/glm/glm.hpp>
 #include <GLFW/Include/glfw3.h>
 #include "imgui/imgui.h"
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include "PrefabManager.h"
+#include "AiComponent.h"
+#include "PlayerInputComponent.h"
+#include "MeshComponent.h"
+#include "GroundSensorComponent.h"
+#include "PlatformComponent.h"
+#include "ExplosiveComponent.h"
 
 Application::Application()
 	: window(nullptr)
@@ -113,6 +120,7 @@ void Application::Run()
 		lastFrameTime = currentFrameTime;
 
 		if (deltaTime > 0.25f) deltaTime = 0.25f;
+		deltaTime *= scene->timeScale;
 
 		glfwPollEvents();
 
@@ -136,126 +144,77 @@ void Application::Run()
 				glfwSetInputMode(win, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 				cursorEnabled = false;
 
-				glm::vec3 inputDir(0.0f);
-
-				if (glfwGetKey(win, GLFW_KEY_W) == GLFW_PRESS) inputDir.z -= 1.0f;
-				if (glfwGetKey(win, GLFW_KEY_S) == GLFW_PRESS) inputDir.z += 1.0f;
-				if (glfwGetKey(win, GLFW_KEY_A) == GLFW_PRESS) inputDir.x -= 1.0f;
-				if (glfwGetKey(win, GLFW_KEY_D) == GLFW_PRESS) inputDir.x += 1.0f;
-
-				if (glm::length(inputDir) > 0.01f) {
-					inputDir = glm::normalize(inputDir);
-				}
+				physicsSystem.Update(deltaTime, masterObjectList);
 
 				static bool eWasPressed = false;
 				bool eIsPressed = (glfwGetKey(win, GLFW_KEY_E) == GLFW_PRESS);
 
 				if (eIsPressed && !eWasPressed) {
 					// 1. Create the Ray from the Camera
+					// Safely get player position if it exists
+					glm::vec3 playerPos = scene->playerObject ? scene->playerObject->GetTransform().position : glm::vec3(0.0f);
 					Ray lookRay;
-					lookRay.origin = scene->player.position + glm::vec3(0.0f, 1.0f, 0.0f);
+					lookRay.origin = playerPos + glm::vec3(0.0f, 1.0f, 0.0f);
 					lookRay.direction = scene->mainCamera->GetFront();
 
 					Object* closestHitObject = nullptr;
 					float closestHitDistance = 9999.0f;
-					float maxReach = 5.0f; // You can't press a button 100 meters away
+					float maxReach = 5.0f;
 
-					// 2. Loop through the world to find what we are looking at
 					for (Object* obj : scene->objects) {
-						if (!obj || !obj->GetMesh()) continue;
-						if (obj == scene->player.visualObject) continue; // Don't click yourself!
+						auto meshComp = obj->GetComponent<MeshComponent>();
+						if (!meshComp || !meshComp->mesh) continue;
+						if (obj == scene->playerObject) continue; // ECS: Don't click yourself!
 
-						// Get the World AABB
-						AABB localBox = obj->GetMesh()->GetLocalAABB();
-						AABB worldBox = GetWorldAABB(localBox, obj->GetModelMatrix()); // Assuming you have this helper
+						AABB localBox = meshComp->mesh->GetLocalAABB();
+						AABB worldBox = GetWorldAABB(localBox, obj->GetModelMatrix());
 
 						float hitDist = 0.0f;
 						if (TestRayAABB(lookRay, worldBox, hitDist)) {
-							// Did we hit it, is it within arm's reach, and is it the closest thing?
 							if (hitDist > 0.0f && hitDist < maxReach && hitDist < closestHitDistance) {
 								closestHitDistance = hitDist;
 								closestHitObject = obj;
 							}
 						}
 					}
-					// 3. DO THE INTERACTION
+
 					if (closestHitObject != nullptr) {
 						std::cout << "Interacted with: " << closestHitObject->GetName() << "\n";
-
-						// --- THE "FINISH LINE" LOGIC ---
 						if (closestHitObject->GetName() == "FinishLine") {
 							std::cout << "Level Finished! Time: " << scene->levelTime << "\n";
-
-							// Did we beat the best time?
 							if (scene->levelTime < scene->bestTime) {
 								scene->bestTime = scene->levelTime;
 								std::cout << "NEW RECORD!\n";
-
-								// Immediately save the JSON so the record is permanent
-								SaveLevel("Level_1.json"); // Assuming you know the current level name!
+								SaveLevel("Level_1.json");
 							}
-
-							// Kick them back to the Main Menu to celebrate
 							editor->currentState = EngineState::MainMenu;
 						}
 					}
 				}
 				eWasPressed = eIsPressed;
 
-				static bool rKeyPressed = false; // Prevent holding the key down from firing 60 times a second
+				// --- DELETED OLD ENEMY LOOP ---
+				// masterObjectList will automatically call Update() on your AIComponents!
 
-				if (glfwGetKey(win, GLFW_KEY_R) == GLFW_PRESS) {
-					if (!rKeyPressed) {
-						// Loop through every ragdoll in the scene and shatter them!
-						for (auto* ragdoll : scene->ragdolls) {
-							if (ragdoll) {
-								ragdoll->BreakAllJoints();
-							}
-						}
-						rKeyPressed = true;
+				// TODO: Refactor Platform to use ECS later. Commented out to prevent crashes for now!
+				// for (Platform* plat : scene->platforms) {
+				// 	plat->Update(deltaTime, scene->playerObject);
+				// }
+
+				// --- PURE ECS CAMERA TRACKING ---
+				glm::vec3 camTarget = glm::vec3(0.0f);
+				if (scene->playerObject) {
+					auto ragdoll = scene->playerObject->GetComponent<ActiveRagdollComponent>();
+					if (ragdoll && ragdoll->bodyParts.size() > 1 && ragdoll->bodyParts[1]) {
+						camTarget = ragdoll->bodyParts[1]->GetTransform().position;
 					}
-				}
-				else {
-					rKeyPressed = false;
-				}
-
-				// --- JUMP DEBOUNCER ---
-				static bool spaceWasPressed = false;
-				bool spaceIsPressed = (glfwGetKey(win, GLFW_KEY_SPACE) == GLFW_PRESS);
-				bool wantJump = (spaceIsPressed && !spaceWasPressed); // Only true on the exact frame it's pressed!
-				spaceWasPressed = spaceIsPressed;
-
-				// --- DASH DEBOUNCER (Using Left Shift) ---
-				static bool shiftWasPressed = false;
-				bool shiftIsPressed = (glfwGetKey(win, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS);
-				bool wantDash = (shiftIsPressed && !shiftWasPressed);
-				shiftWasPressed = shiftIsPressed;
-
-				glm::vec3 camForward = scene->mainCamera->GetFront();
-
-				// Pass the new wantDash parameter to your Update function!
-				if (scene->activeTerrain) {
-					scene->player.Update(deltaTime, inputDir, wantJump, wantDash, camForward, *scene->activeTerrain, scene->objects);
-				}
-
-				for (Enemy* enemy : scene->enemies) {
-					if (scene->activeTerrain) {
-						enemy->Update(deltaTime, scene->player.position, scene->player.visualObject, *scene->activeTerrain, scene->objects);
-					}
-				}
-
-				for (Platform* plat : scene->platforms) {
-					plat->Update(deltaTime, scene->player);
-				}
-
-				for (auto* ragdoll : scene->ragdolls) {
-					if (ragdoll) {
-						ragdoll->UpdatePhysics(deltaTime);
+					else {
+						camTarget = scene->playerObject->GetTransform().position;
 					}
 				}
 
 				glm::vec3 cameraOffset = glm::vec3(2.5f, 5.0f, 10.0f);
-				activeCamera->SetPosition(scene->player.position + cameraOffset);
+				activeCamera->SetPosition(camTarget + cameraOffset);
 			}
 			else if (editor->currentState == EngineState::MainMenu || editor->currentState == EngineState::Paused)
 			{
@@ -387,43 +346,55 @@ void Application::SaveLevel(const std::string& filename) {
 	levelData["level"]["bestTime"] = scene->bestTime;
 
 	// 1. Save Player Position
-	levelData["player"]["posX"] = scene->player.position.x;
-	levelData["player"]["posY"] = scene->player.position.y;
-	levelData["player"]["posZ"] = scene->player.position.z;
-
+	if (scene->playerObject) {
+		levelData["player"]["posX"] = scene->playerObject->GetTransform().position.x;
+		levelData["player"]["posY"] = scene->playerObject->GetTransform().position.y;
+		levelData["player"]["posZ"] = scene->playerObject->GetTransform().position.z;
+	}
 	// 2. Save Objects
 	levelData["objects"] = json::array();
-	for (Object* obj : scene->objects) {
-		if (obj == scene->player.visualObject) continue; // Don't save the player as a static object!
+
+	// Note: It is highly recommended to loop through masterObjectList here instead of scene->objects 
+	// to ensure you don't miss anything!
+	for (Object* obj : masterObjectList) {
+		if (!obj->serialize) continue;
+		if (obj == scene->playerObject) continue; // Don't save the active player avatar
 
 		json jObj;
 		jObj["name"] = obj->GetName();
-		jObj["meshPath"] = obj->GetMeshFilePath(); // You need to add this getter!
 
+		// Transforms
 		jObj["posX"] = obj->GetTransform().position.x;
 		jObj["posY"] = obj->GetTransform().position.y;
 		jObj["posZ"] = obj->GetTransform().position.z;
 
-		// Rotation
 		jObj["rotX"] = obj->GetTransform().rotation.x;
 		jObj["rotY"] = obj->GetTransform().rotation.y;
 		jObj["rotZ"] = obj->GetTransform().rotation.z;
 
-		// ADD THIS: Scale
 		jObj["scaleX"] = obj->GetTransform().scale.x;
 		jObj["scaleY"] = obj->GetTransform().scale.y;
 		jObj["scaleZ"] = obj->GetTransform().scale.z;
+
+		// AUTOMATIC COMPONENT SAVING
+		jObj["components"] = json::array();
+		for (auto& comp : obj->GetComponents()) {
+			json jComp;
+			jComp["type"] = comp->GetComponentName();
+			comp->Serialize(jComp);
+			jObj["components"].push_back(jComp);
+		}
 
 		levelData["objects"].push_back(jObj);
 	}
 
 	// Write to file
 	std::ofstream file("Assets/Levels/" + filename);
-	file << levelData.dump(4); // 4 spaces indentation for readable JSON
+	file << levelData.dump(4);
 	std::cout << "Level Saved to " << filename << "\n";
 }
 
-void Application::LoadLevel(const std::string& filename) {
+void Application::LoadLevel(const std::string& filename, bool isEditorMode) {
 	std::cout << "Loading Level: " << filename << "...\n";
 
 	// 1. WIPE THE CURRENT SCENE
@@ -432,9 +403,8 @@ void Application::LoadLevel(const std::string& filename) {
 	}
 	masterObjectList.clear();
 	scene->objects.clear();
-	scene->enemies.clear();
 	scene->lights.clear();
-	scene->platforms.clear();
+	scene->playerObject = nullptr;
 
 	// 2. READ THE JSON
 	std::ifstream file("Assets/Levels/" + filename);
@@ -446,128 +416,117 @@ void Application::LoadLevel(const std::string& filename) {
 	json levelData;
 	file >> levelData;
 
-	if (levelData.contains("level") && levelData["level"].contains("bestTime")) {
-		scene->bestTime = levelData["level"]["bestTime"];
-	}
-	else {
-		scene->bestTime = 9999.0f; // Default for new levels
-	}
+	scene->bestTime = levelData.contains("level") && levelData["level"].contains("bestTime")
+		? (float)levelData["level"]["bestTime"]
+		: 9999.0f;
 
-	// 3. RESTORE PLAYER
-	scene->player.position.x = levelData["player"]["posX"];
-	scene->player.position.y = levelData["player"]["posY"];
-	scene->player.position.z = levelData["player"]["posZ"];
+	glm::vec3 savedPlayerPos(0.0f, 10.0f, 0.0f); // Default fallback spawn point
 
-	std::vector<Object*> tempRagdollParts;
+	if (levelData.contains("player")) {
+		savedPlayerPos.x = levelData["player"].value("posX", 0.0f);
+		savedPlayerPos.y = levelData["player"].value("posY", 10.0f);
+		savedPlayerPos.z = levelData["player"].value("posZ", 0.0f);
+	}
 
 	// 4. RESTORE OBJECTS
 	for (auto& jObj : levelData["objects"]) {
-		std::string path = jObj.value("meshPath", "");
 		std::string objName = jObj.value("name", "UnknownObject");
-		std::shared_ptr<Mesh> mesh = nullptr;
+		glm::vec3 pos(jObj.value("posX", 0.0f), jObj.value("posY", 0.0f), jObj.value("posZ", 0.0f));
 
-		// --- FIX 1: HANDLE PRIMITIVES VS FILES ---
-		if (path == "Primitive_Cube") mesh = Primitives::CreateCube();
-		else if (path == "Primitive_Sphere") mesh = Primitives::CreateSphere();
-		else if (path == "Primitive_Plane") mesh = Primitives::CreatePlane();
-		else if (path == "Primitive_Quad") mesh = Primitives::CreateQuad();
-		else if (path == "Primitive_Cylinder") mesh = Primitives::CreateCylinder();
-		else if (path == "Primitive_Capsule") mesh = Primitives::CreateCapsule(0.5f, 1.0f);
-		else if (!path.empty()) {
-			// It's a real 3D model file
-			mesh = MeshManager::GetInstance().GetMesh(path);
+		// --- A. THE SPAWNERS (Check these first!) ---
+		if (objName == "Enemy" || objName == "Enemy_Brain") {
+			if (isEditorMode) {
+				Object* dummy = new Object();
+				dummy->SetName("Enemy");
+				dummy->AddComponent(std::make_shared<MeshComponent>(Primitives::CreateCube(), "Primitive_Cube"));
+				dummy->SetPosition(pos);
+				scene->AddObjects(dummy);
+				masterObjectList.push_back(dummy);
+			}
+			else {
+				Object* enemyBrain = prefabManager.InstantiateRagdollPrefab("assets/prefabs/ragdoll_basic.json", pos, scene, masterObjectList, "Enemy");
+				enemyBrain->SetName("Enemy");
+				enemyBrain->AddComponent(std::make_shared<AIComponent>(scene));
+				enemyBrain->AddComponent(std::make_shared<GroundSensorComponent>(scene));
+			}
+			continue; // Skip the rest of the loop for spawners!
 		}
 
-		if (mesh) {
-			Object* newObj = new Object();
-			newObj->SetName(objName);
-			newObj->SetMesh(mesh);
-
-			// Re-assign the path so it survives the NEXT time you save!
-			newObj->SetMeshFilePath(path);
-
-			// --- FIX 2: USE SETTERS TO RECALCULATE MATRICES ---
-			glm::vec3 pos(
-				jObj.value("posX", 0.0f),
-				jObj.value("posY", 0.0f),
-				jObj.value("posZ", 0.0f)
-			);
-
-			glm::vec3 rot(
-				jObj.value("rotX", 0.0f),
-				jObj.value("rotY", 0.0f),
-				jObj.value("rotZ", 0.0f)
-			);
-
-			// Note: Scale defaults to 1.0f! If it defaulted to 0.0f, your objects would be invisible!
-			glm::vec3 scale(
-				jObj.value("scaleX", 1.0f),
-				jObj.value("scaleY", 1.0f),
-				jObj.value("scaleZ", 1.0f)
-			);
-
-			newObj->SetPosition(pos);
-			newObj->SetRotation(rot);
-			newObj->SetScale(scale);
-
-			if (newObj->GetName() == "Enemy") {
-				Enemy* newEnemy = new Enemy();
-				newEnemy->visualObject = newObj;
-				//newEnemy->AddComponent(std::make_shared<AIComponent>(playerBrain));
-				scene->enemies.push_back(newEnemy);
+		if (objName == "Player" || objName == "PlayerSpawn" || objName == "Player_Brain") {
+			if (isEditorMode) {
+				// In Editor, put the dummy box where the spawner was placed
+				Object* dummy = new Object();
+				dummy->SetName("Player");
+				dummy->AddComponent(std::make_shared<MeshComponent>(Primitives::CreateCube(), "Primitive_Cube"));
+				dummy->SetPosition(pos);
+				scene->AddObjects(dummy);
+				masterObjectList.push_back(dummy);
 			}
-
-			if (newObj->GetName() == "Platform") {
-				Platform* newPlat = new Platform();
-				newPlat->visualObject = newObj;
-
-				// Set the start and end points
-				newPlat->startPos = newObj->GetTransform().position;
-				// For now, let's just make it float 15 units forward on the Z axis
-				newPlat->endPos = newPlat->startPos + glm::vec3(0.0f, 0.0f, 15.0f);
-
-				scene->platforms.push_back(newPlat);
+			else {
+				// IN GAME: Spawn the actual ragdoll at the savedPlayerPos!
+				Object* playerBrain = prefabManager.InstantiateRagdollPrefab("assets/prefabs/ragdoll_basic.json", savedPlayerPos, scene, masterObjectList, "Player");
+				playerBrain->SetName("PlayerBrain");
+				playerBrain->AddComponent(std::make_shared<PlayerInputComponent>(&GetWindow().GetWindow(), scene->mainCamera));
+				playerBrain->AddComponent(std::make_shared<GroundSensorComponent>(scene));
+				scene->playerObject = playerBrain;
 			}
-			if (newObj->GetName() == "Ragdoll_Part") {
-				// Add to a temporary list. Once we have 5 parts (Head, Torso, L-Arm, R-Arm, Legs),
-				// we initialize the RagdollEntity.
-				tempRagdollParts.push_back(newObj);
+			continue;
+		}
 
-				if (tempRagdollParts.size() == 5) {
-					RagdollEntity* newRagdoll = new RagdollEntity();
-					newRagdoll->bodyParts = tempRagdollParts;
+		// --- B. STANDARD SCENE PROPS ---
+		Object* newObj = new Object();
+		newObj->SetName(objName);
 
-					// Remember the order based on how you spawned them:
-					// [0] Head, [1] Torso, [2] Left Arm, [3] Right Arm, [4] Legs
+		// Load Transforms
+		newObj->SetPosition(pos);
+		newObj->SetRotation(glm::vec3(jObj.value("rotX", 0.0f), jObj.value("rotY", 0.0f), jObj.value("rotZ", 0.0f)));
+		newObj->SetScale(glm::vec3(jObj.value("scaleX", 1.0f), jObj.value("scaleY", 1.0f), jObj.value("scaleZ", 1.0f)));
 
-					// 1. Connect Head to Torso (Rest length ~1.0)
-					newRagdoll->joints.push_back(SpringConstraint{ tempRagdollParts[0], tempRagdollParts[1], 1.2f, 800.0f, 50.0f });
+		// Load Components
+		if (jObj.contains("components")) {
+			for (auto& jComp : jObj["components"]) {
+				std::string compType = jComp.value("type", "");
 
-					// 2. Connect Left Arm to Torso (Rest length ~1.5)
-					newRagdoll->joints.push_back(SpringConstraint{ tempRagdollParts[2], tempRagdollParts[1], 1.5f, 800.0f, 50.0f });
+				if (compType == "MeshComponent") {
+					auto meshComp = std::make_shared<MeshComponent>(nullptr, "");
+					meshComp->Deserialize(jComp); // The primitive generation happens strictly inside here now!
+					newObj->AddComponent(meshComp);
+				}
+				else if (compType == "CollisionComponent") {
+					AABB defaultBox;
+					auto colComp = std::make_shared<CollisionComponent>(defaultBox, true);
+					colComp->Deserialize(jComp);
 
-					// 3. Connect Right Arm to Torso (Rest length ~1.5)
-					newRagdoll->joints.push_back(SpringConstraint{ tempRagdollParts[3], tempRagdollParts[1], 1.5f, 800.0f, 50.0f });
+					// --- NEW: FORCE IT TO BE A SOLID WALL ---
+					// Even if the JSON saved it as a moving object, level props must be static!
+					colComp->isStatic = true;
 
-					// 4. Connect Legs to Torso (Rest length ~1.5)
-					newRagdoll->joints.push_back(SpringConstraint{ tempRagdollParts[4], tempRagdollParts[1], 1.5f, 800.0f, 50.0f });
-
-					scene->ragdolls.push_back(newRagdoll);
-					tempRagdollParts.clear();
+					newObj->AddComponent(colComp);
 				}
 			}
+		}
 
-			scene->AddObjects(newObj);
-			masterObjectList.push_back(newObj);
+		// Legacy Platform Setup (To be refactored into a Component later)
+		if (newObj->GetName() == "Platform") {
+			auto platComp = std::make_shared<PlatformComponent>(scene);
+			platComp->startPos = newObj->GetTransform().position;
+			platComp->endPos = platComp->startPos + glm::vec3(0.0f, 0.0f, 15.0f);
+			newObj->AddComponent(platComp);
 		}
-		else {
-			std::cout << "WARNING: Failed to load mesh for object: " << jObj["name"] << " (Path: " << path << ")\n";
+
+		if (newObj->GetName() == "ExplosiveBarrel") {
+			newObj->AddComponent(std::make_shared<ExplosiveComponent>(scene));
+
+			// Optionally force it to have a dynamic collider so you can kick it!
+			auto colComp = newObj->GetComponent<CollisionComponent>();
+			if (colComp) colComp->isStatic = false;
 		}
+
+		scene->AddObjects(newObj);
+		masterObjectList.push_back(newObj);
 	}
-	scene->levelTime = 0.0f;
 
-	// 5. START PLAYING
-	//editor->currentState = EngineState::Playing;
+	scene->levelTime = 0.0f;
 }
 
 void Application::SetupSubscriptions()
@@ -602,9 +561,7 @@ void Application::HandleObjectSpawned()
 
 				Object* newObject = new Object();
 				newObject->SetName("New Mesh Object");
-				newObject->SetMesh(mesh);
-
-				newObject->SetMeshFilePath(spawnMsg->filePath);
+				newObject->AddComponent(std::make_shared<MeshComponent>(mesh, spawnMsg->filePath));
 
 				// Add to Scene
 				this->scene->AddObjects(newObject);
@@ -659,12 +616,17 @@ void Application::HandleChangeMesh()
 
 			if (newMesh)
 			{
-				changeMsg->targetObject->SetMesh(newMesh);
-				std::cout << "Successfully changed mesh to: " << changeMsg->newFilePath << "\n";
+				auto meshComp = changeMsg->targetObject->GetComponent<MeshComponent>();
+
+				if (meshComp != nullptr) {
+					// 2a. It already has one! Just swap the model and the path inside it.
+					meshComp->mesh = newMesh;
+					meshComp->meshPath = changeMsg->newFilePath;
+				}
 			}
-			else
-			{
-				std::cout << "Failed to load new mesh at: " << changeMsg->newFilePath << "\n";
+			else {
+				// 2b. It doesn't have one yet. Add a brand new component!
+				changeMsg->targetObject->AddComponent(std::make_shared<MeshComponent>(newMesh, changeMsg->newFilePath));
 			}
 		});
 }
@@ -713,7 +675,7 @@ void Application::HandleLoadLevel()
 	MessageBus::GetInstance().Subscribe(MessageType::LoadLevel, [this](Message* msg)
 		{
 			auto* loadMsg = static_cast<LoadLevelMessage*>(msg);
-			this->LoadLevel(loadMsg->levelName);
+			this->LoadLevel(loadMsg->levelName, loadMsg->isEditorMode);
 		});
 }
 void Application::HandleSaveLevel()
@@ -764,17 +726,18 @@ void Application::HandlePrimitiveSpawned()
 			if (generatedMesh)
 			{
 				Object* newObject = new Object();
-				newObject->SetName(objectName);
-				newObject->SetMesh(generatedMesh);
+				newObject->AddComponent(std::make_shared<MeshComponent>(generatedMesh, objectName));
 
-				if (spawnMsg->shapeType == PrimitiveShape::Cube) newObject->SetMeshFilePath("Primitive_Cube");
-				else if (spawnMsg->shapeType == PrimitiveShape::Sphere) newObject->SetMeshFilePath("Primitive_Sphere");
-				else if (spawnMsg->shapeType == PrimitiveShape::Plane) newObject->SetMeshFilePath("Primitive_Plane");
-				else if (spawnMsg->shapeType == PrimitiveShape::Quad) newObject->SetMeshFilePath("Primitive_Quad");
-				else if (spawnMsg->shapeType == PrimitiveShape::Cylinder) newObject->SetMeshFilePath("Primitive_Cylinder");
-				else if (spawnMsg->shapeType == PrimitiveShape::Capsule) newObject->SetMeshFilePath("Primitive_Capsule");
+				if (spawnMsg->shapeType == PrimitiveShape::Cube) newObject->GetComponent<MeshComponent>()->meshPath = "Primitive_Cube";
+				else if (spawnMsg->shapeType == PrimitiveShape::Sphere) newObject->GetComponent<MeshComponent>()->meshPath = "Primitive_Sphere";
+				else if (spawnMsg->shapeType == PrimitiveShape::Plane) newObject->GetComponent<MeshComponent>()->meshPath = "Primitive_Plane";
+				else if (spawnMsg->shapeType == PrimitiveShape::Quad) newObject->GetComponent<MeshComponent>()->meshPath = "Primitive_Quad";
+				else if (spawnMsg->shapeType == PrimitiveShape::Cylinder) newObject->GetComponent<MeshComponent>()->meshPath = "Primitive_Cylinder";
+				else if (spawnMsg->shapeType == PrimitiveShape::Capsule) newObject->GetComponent<MeshComponent>()->meshPath = "Primitive_Capsule";
 
 				this->scene->AddObjects(newObject);
+
+				newObject->AddComponent(std::make_shared<CollisionComponent>(generatedMesh->localAABB, true)); // Dynamic collider
 
 				this->masterObjectList.push_back(newObject);
 

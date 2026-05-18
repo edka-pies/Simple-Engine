@@ -92,11 +92,14 @@ public:
 class LoadLevelMessage : public Message {
 public:
     std::string levelName;
-    LoadLevelMessage(const std::string& name) : Message(MessageType::LoadLevel), levelName(name) {}
+	bool isEditorMode = false;
+    LoadLevelMessage(const std::string& name, bool editorMode) 
+        : Message(MessageType::LoadLevel), levelName(name), isEditorMode(editorMode) {}
 };
 
 class SaveLevelMessage : public Message {
 public:
     std::string levelName;
-    SaveLevelMessage(const std::string& name) : Message(MessageType::SaveLevel), levelName(name) {}
+    SaveLevelMessage(const std::string& name) 
+        : Message(MessageType::SaveLevel), levelName(name) {}
 };

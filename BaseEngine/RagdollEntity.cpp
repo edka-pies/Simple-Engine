@@ -55,6 +55,21 @@ void RagdollEntity::UpdatePhysics(float dt) {
         currentRot.x *= 0.85f; // Kill forward/backward tilt
         currentRot.z *= 0.85f; // Kill side-to-side tilt
         torso->SetRotation(currentRot);
+
+        Object* head = bodyParts[0];
+
+        // The head wants to be exactly 'restLength' units ABOVE the torso
+        float targetHeadHeight = torso->GetTransform().position.y + joints[0].restLength + 0.2f;
+        float headError = targetHeadHeight - head->GetTransform().position.y;
+
+        if (headError > 0) {
+            head->velocity.y += (headError * 40.0f * dt);
+        }
+
+        // Add drag to the head so it doesn't vibrate violently
+        head->velocity.y *= 0.9f;
+        head->velocity.x *= 0.95f;
+        head->velocity.z *= 0.95f;
     }
 
     for (Object* part : bodyParts) {
@@ -62,6 +77,9 @@ void RagdollEntity::UpdatePhysics(float dt) {
 
         // 1. Apply Gravity
         part->velocity.y -= 9.81f * dt;
+
+        part->velocity.x *= 0.98f;
+        part->velocity.z *= 0.98f;
 
         // 2. Calculate New Position (Encapsulation Safe)
         glm::vec3 currentPos = part->GetTransform().position;

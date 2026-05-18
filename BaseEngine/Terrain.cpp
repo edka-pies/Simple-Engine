@@ -148,3 +148,60 @@ float Terrain::GetTriangleHeightAt(float x, float z) const {
 
     return height;
 }
+
+float Terrain::GetHeightAt(float worldX, float worldZ) {
+    // 1. Calculate where the player is relative to the bottom-left corner of the terrain
+    // (Adjust terrainStartX and terrainStartZ based on where your terrain is spawned!)
+    float terrainStartX = 0.0f;
+    float terrainStartZ = 0.0f;
+    float gridSize = 1.0f; // The distance between your vertices (scale)
+
+    float terrainX = worldX - terrainStartX;
+    float terrainZ = worldZ - terrainStartZ;
+
+    // 2. Calculate which grid square (cell) the player is standing in
+    int gridX = static_cast<int>(std::floor(terrainX / gridSize));
+    int gridZ = static_cast<int>(std::floor(terrainZ / gridSize));
+
+    // 3. Prevent crashing if the player walks off the edge of the map
+    // (Replace maxGridX and maxGridZ with your actual terrain vertex width/height)
+    int maxGridX = 100;
+    int maxGridZ = 100;
+    if (gridX < 0 || gridX >= maxGridX - 1 || gridZ < 0 || gridZ >= maxGridZ - 1) {
+        return 0.0f; // Fallback height if they are off the map
+    }
+
+    // 4. Find where we are inside this specific grid square (values from 0.0 to 1.0)
+    float xCoord = std::fmod(terrainX, gridSize) / gridSize;
+    float zCoord = std::fmod(terrainZ, gridSize) / gridSize;
+
+    // 5. Get the 4 vertex heights of this specific grid square
+    // (You will need to pull these from your Terrain's vertex array/heightmap data)
+    float hTopLeft = GetTriangleHeightAt(gridX, gridZ);
+    float hTopRight = GetTriangleHeightAt(gridX + 1, gridZ);
+    float hBottomLeft = GetTriangleHeightAt(gridX, gridZ + 1);
+    float hBottomRight = GetTriangleHeightAt(gridX + 1, gridZ + 1);
+
+    // 6. Every grid square is made of 2 triangles. Which one are we standing on?
+    float answer;
+    if (xCoord <= (1.0f - zCoord)) {
+        // We are on the Top-Left triangle
+        answer = BarryCentric(
+            glm::vec3(0.0f, hTopLeft, 0.0f),
+            glm::vec3(1.0f, hTopRight, 0.0f),
+            glm::vec3(0.0f, hBottomLeft, 1.0f),
+            glm::vec2(xCoord, zCoord)
+        );
+    }
+    else {
+        // We are on the Bottom-Right triangle
+        answer = BarryCentric(
+            glm::vec3(1.0f, hTopRight, 0.0f),
+            glm::vec3(1.0f, hBottomRight, 1.0f),
+            glm::vec3(0.0f, hBottomLeft, 1.0f),
+            glm::vec2(xCoord, zCoord)
+        );
+    }
+
+    return answer;
+}

@@ -1,6 +1,6 @@
 #include "Enemy.h"
 #include "PhysicsUtils.h"
-#include "Mesh.h"
+#include "MeshComponent.h"
 #include <iostream>
 
 void Enemy::Update(float dt, glm::vec3 playerPos, Object* playerObj, const Terrain& terrain, const std::vector<Object*>& sceneObjects) {
@@ -61,9 +61,11 @@ void Enemy::Update(float dt, glm::vec3 playerPos, Object* playerObj, const Terra
 
     // --- ENVIRONMENT COLLISION ---
     for (Object* obj : sceneObjects) {
-        if (!obj || !obj->GetMesh() || obj == visualObject || obj == playerObj) continue;
+        if (!obj) continue;
+        auto meshComp = obj->GetComponent<MeshComponent>();
+        if (!meshComp || !meshComp->mesh || obj == visualObject || obj == playerObj) continue;
 
-        AABB localBox = obj->GetMesh()->GetLocalAABB();
+        AABB localBox = meshComp->mesh->GetLocalAABB();
         AABB worldBox = GetWorldAABB(localBox, obj->GetModelMatrix()); // Using your existing helper!
 
         if (TestAABBAABB(enemyBox, worldBox)) {

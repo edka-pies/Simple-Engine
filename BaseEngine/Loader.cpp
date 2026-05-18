@@ -1,6 +1,10 @@
 #include "Loader.h"
 #include <sstream> 
 #include <map>
+#include <array>
+#include <memory>
+#include <iostream>
+#include <fstream>
 
 //fan triangulation for any polygon (>=3)
 void Loader::Triangulate(Face& face)

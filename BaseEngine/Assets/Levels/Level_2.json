@@ -5,9 +5,22 @@
     "objects": [
         {
             "meshPath": "Primitive_Cube",
-            "name": "Ragdoll_Part",
+            "name": "Enemy",
+            "posX": 5.0,
+            "posY": 5.499507427215576,
+            "posZ": 0.0,
+            "rotX": 0.0,
+            "rotY": 0.0,
+            "rotZ": 0.0,
+            "scaleX": 1.0,
+            "scaleY": 1.0,
+            "scaleZ": 1.0
+        },
+        {
+            "meshPath": "Primitive_Cube",
+            "name": "Player",
             "posX": 0.0,
-            "posY": 10.0,
+            "posY": 5.5,
             "posZ": 0.0,
             "rotX": 0.0,
             "rotY": 0.0,
@@ -17,49 +30,10 @@
             "scaleZ": 1.0
         },
         {
-            "meshPath": "Primitive_Cube",
-            "name": "Ragdoll_Part",
+            "meshPath": "Primitive_Cylinder",
+            "name": "GameObject",
             "posX": 0.0,
-            "posY": 9.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-        },
-        {
-            "meshPath": "Primitive_Cube",
-            "name": "Ragdoll_Part",
-            "posX": -1.5,
-            "posY": 9.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-        },
-        {
-            "meshPath": "Primitive_Cube",
-            "name": "Ragdoll_Part",
-            "posX": 1.5,
-            "posY": 9.0,
-            "posZ": 0.0,
-            "rotX": 0.0,
-            "rotY": 0.0,
-            "rotZ": 0.0,
-            "scaleX": 1.0,
-            "scaleY": 1.0,
-            "scaleZ": 1.0
-        },
-        {
-            "meshPath": "Primitive_Cube",
-            "name": "Ragdoll_Part",
-            "posX": 0.0,
-            "posY": 7.5,
+            "posY": 1.0,
             "posZ": 0.0,
             "rotX": 0.0,
             "rotY": 0.0,
@@ -70,8 +44,8 @@
         }
     ],
     "player": {
-        "posX": 35.458648681640625,
-        "posY": -1.738720417022705,
-        "posZ": 55.58906936645508
+        "posX": 0.0,
+        "posY": 0.0,
+        "posZ": 0.0
     }
 }

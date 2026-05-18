@@ -13,6 +13,8 @@ public:
 
     float GetTriangleHeightAt(float x, float z) const;
 
+	float GetHeightAt(float worldX, float worldZ);
+
 private:
     void GenerateMesh();
     void SetupBuffers();

@@ -1,6 +1,7 @@
 #include "Scene.h"
 #include "Object.h"
 #include "Renderable.h"
+#include "Mesh.h"
 
 Scene::Scene() : mainCamera(nullptr)
 {

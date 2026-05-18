@@ -1,4 +1,5 @@
 #include "Primitives.h"
+#include <glm/glm/gtc/constants.hpp>
 
 std::shared_ptr<Mesh> Primitives::BuildMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices) {
     auto mesh = std::make_shared<Mesh>();

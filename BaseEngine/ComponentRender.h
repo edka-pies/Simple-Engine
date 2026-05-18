@@ -1,7 +1,7 @@
 #pragma once
-#include "ComponentObj.h"
+#include "Component.h"
 #include "Renderable.h"
-class ComponentRender : public ComponentObj, public Renderable
+class ComponentRender : public Component, public Renderable
 {
 };
 

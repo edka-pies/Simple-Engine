@@ -4,13 +4,12 @@
 #include <map>
 #include "Camera.h"
 #include "Object.h"
-#include "Player.h"
 #include "Enemy.h"
 #include "Terrain.h"
 #include "Renderable.h"
-#include "RagdollEntity.h"
+#include "Mesh.h"
 #include "Light.h"
-#include "Platform.h"
+#include "ActiveRagdollComponent.h"
 
 class Scene
 {
@@ -29,21 +28,20 @@ public:
 	std::vector<Object*> objects;
 	std::vector<std::shared_ptr<Mesh>> renderables;
 	std::vector<Light*> lights;
-	std::vector<RagdollEntity*> ragdolls;
 
 	Camera* mainCamera;
 
 	Terrain* activeTerrain = nullptr;
 
 	bool isPlaying = false;
-	Player player;
-	std::vector<Enemy*> enemies;
-	std::vector<Platform*> platforms;
+	Object* playerObject = nullptr;
 
 	float levelTime = 0.0f;
 	float bestTime = 9999.0f;
 
-private:
+	float timeScale = 1.0f;
+
+private: 
 	void AddRenderable(std::shared_ptr<Mesh> renderable);
 
 };

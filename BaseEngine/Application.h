@@ -3,6 +3,8 @@
 #include <vector>
 #include "Light.h"
 #include "CameraManager.h"
+#include "PrefabManager.h"
+#include "PhysicsSystem.h"
 #include "EditorBase.h"
 
 class Object;
@@ -11,7 +13,7 @@ class EngineContext;
 class Scene;
 class EditorBase;
 class Window;
-class Message;
+class Message;	
 
 class Application
 {
@@ -43,7 +45,7 @@ private:
 	void KeyCallback();
 	void MouseCallback();
 	void SaveLevel(const std::string& filename);
-	void LoadLevel(const std::string& filename);
+	void LoadLevel(const std::string& filename, bool isEditorMode = false);
 
 	void SetupSubscriptions();
 
@@ -64,5 +66,7 @@ private:
 	EditorBase* editor;
 	Light* mainLight;
 	CameraManager cameraManager;
+	PrefabManager prefabManager;
+	PhysicsSystem physicsSystem;
 };
 

@@ -4,7 +4,6 @@
 #include "AssetViewer.h"
 #include "Object.h"
 #include "Scene.h"
-#include "Player.h"
 #include "MessageBus.h"
 #include "Primitives.h"
 #include "Camera.h"
@@ -128,7 +127,7 @@ void EditorBase::FrameRun(GLFWwindow* win)
                     std::string fileName(levelNameBuffer);
                     if (fileName.find(".json") == std::string::npos) fileName += ".json";
 
-                    auto msg = std::make_unique<LoadLevelMessage>(fileName);
+                    auto msg = std::make_unique<LoadLevelMessage>(fileName, true);
                     MessageBus::GetInstance().EnqueueMessage(std::move(msg));
 
                     // Ensure we stay in Editor mode when loading from here!
@@ -142,8 +141,17 @@ void EditorBase::FrameRun(GLFWwindow* win)
             if (ImGui::Button("STOP MODE", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
                 scene->isPlaying = false;
                 currentState = EngineState::Editor;
-                scene->player.position = glm::vec3(30.0f, 10.0f, 10.0f);
-                scene->player.velocity = glm::vec3(0.0f);
+
+                // --- PURE ECS RESET PLAYER ---
+                if (scene->playerObject) {
+                    scene->playerObject->SetPosition(glm::vec3(30.0f, 10.0f, 10.0f));
+                    auto ragdoll = scene->playerObject->GetComponent<ActiveRagdollComponent>();
+                    if (ragdoll) {
+                        for (auto part : ragdoll->bodyParts) {
+                            if (part) part->velocity = glm::vec3(0.0f);
+                        }
+                    }
+                }
             }
             ImGui::PopStyleColor();
         }
@@ -152,24 +160,6 @@ void EditorBase::FrameRun(GLFWwindow* win)
             if (ImGui::Button("PLAY MODE", ImVec2(ImGui::GetContentRegionAvail().x, 30))) {
                 scene->isPlaying = true;
                 currentState = EngineState::MainMenu;
-                if (scene->player.visualObject == nullptr)
-                {
-                    Object* playerAvatar = new Object();
-                    playerAvatar->SetName("PlayerAvatar");
-
-                    auto startMesh = Primitives::CreateCapsule(1.0f, 2.0f, 16);
-                    playerAvatar->SetMesh(startMesh);
-                    scene->AddObjects(playerAvatar);
-                    //masterObjectList->push_back(playerAvatar);
-                    scene->player.visualObject = playerAvatar;
-                }
-
-                scene->player.position = glm::vec3(30.0f, 10.0f, 10.0f);
-                scene->player.velocity = glm::vec3(0.0f);
-
-                if (scene->player.visualObject->GetMesh()) {
-                    scene->player.visualObject->SetPosition(scene->player.position);
-                }
             }
             ImGui::PopStyleColor();
         }
@@ -181,18 +171,24 @@ void EditorBase::FrameRun(GLFWwindow* win)
             ImGui::SetNextWindowPos(ImVec2(1920 / 2 - 100, 1080 / 2 - 100)); // Center screen
             ImGui::Begin("Main Menu", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_AlwaysAutoResize);
 
-            ImGui::Text("MY AWESOME ENGINE GAME");
+            ImGui::Text("GET GOOD");
             ImGui::Separator();
             if (ImGui::Button("Play Level 1", ImVec2(200, 40))) {
-                MessageBus::GetInstance().EnqueueMessage(std::make_unique<LoadLevelMessage>("Level_1.json"));
+                currentLoadedLevel = "Level_1.json";
+                MessageBus::GetInstance().EnqueueMessage(std::make_unique<LoadLevelMessage>(currentLoadedLevel, false));
 				currentState = EngineState::Playing;
             }
             if (ImGui::Button("Play Level 2", ImVec2(200, 40))) {
-                MessageBus::GetInstance().EnqueueMessage(std::make_unique<LoadLevelMessage>("Level_2.json"));
+                currentLoadedLevel = "Level_2.json";
+                MessageBus::GetInstance().EnqueueMessage(std::make_unique<LoadLevelMessage>(currentLoadedLevel, false));
                 currentState = EngineState::Playing;
             }
             //if (ImGui::Button("Play Level 3", ImVec2(200, 40))) { LoadLevel("Level_3.json"); }
             if (ImGui::Button("Back to Editor", ImVec2(200, 40))) { 
+                if (!currentLoadedLevel.empty()) {
+                    // Notice the 'true' here! This tells your LoadLevel function to spawn Editor dummies.
+                    MessageBus::GetInstance().EnqueueMessage(std::make_unique<LoadLevelMessage>(currentLoadedLevel, true));
+                }
                 currentState = EngineState::Editor;
                 scene->isPlaying = false;
             }

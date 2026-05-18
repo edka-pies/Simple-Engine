@@ -3,67 +3,94 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <stdint.h>
 #include "Transform.h"
-#include "Renderable.h"
-
-class Mesh;
+#include "Component.h"
 
 class Object
 {
+private:
+    // Static counter shared across all objects to generate unique IDs
+    static uint32_t nextID;
 
 public:
-	Object();
-	~Object();
+    const uint32_t id; // Permanent, unique ID for this specific object
+    std::string name;
+    glm::vec3 velocity = glm::vec3(0.0f);
 
-	void Init();
+    bool serialize = true;
 
-	void Update(float deltaTime);
+    Object();
+    virtual ~Object();
 
-	void CleanUp();
+    void Init();
+    void CleanUp();
+    virtual void Update(float dt);
 
-	inline std::string GetName() { return name; }
+    inline std::string GetName() const { return name; }
+    void SetName(const std::string& newName);
 
-	void SetName(std::string newName);
+    // Transform Setters
+    void SetRotation(const glm::vec3& newRotation);
+    void SetPosition(const glm::vec3& newPosition);
+    void SetScale(const glm::vec3& newScale);
 
-	const std::vector<std::shared_ptr<Mesh>>& GetRenderables();
+    // Transform Getters
+    glm::vec3 GetPosition() const { return localTransform.position; }
+    glm::vec3 GetRotation() const { return localTransform.rotation; }
+    glm::vec3 GetScale() const { return localTransform.scale; }
 
-	void CreateMesh();
+    const glm::mat4& GetModelMatrix() const {
+        if (transformDirtyFlag) {
+            cachedModelMatrix = localTransform.mat4();
+            transformDirtyFlag = false;
+        }
+        return cachedModelMatrix;
+    }
 
-	void SetMesh(std::shared_ptr<Mesh> aMesh);
+    glm::mat4 GetTransformMatrix() {
+        // 1. Start with a blank identity matrix
+        glm::mat4 matrix = glm::mat4(1.0f);
 
-	void SetRotation(const glm::vec3& newRotation);
+        // 2. Apply Translation (Position)
+        matrix = glm::translate(matrix, GetTransform().position);
 
-	void SetPosition(const glm::vec3& newPosition);
+        // 3. Apply Rotation (Assuming Euler angles in radians)
+        matrix = glm::rotate(matrix, GetTransform().rotation.x, glm::vec3(1.0f, 0.0f, 0.0f));
+        matrix = glm::rotate(matrix, GetTransform().rotation.y, glm::vec3(0.0f, 1.0f, 0.0f));
+        matrix = glm::rotate(matrix, GetTransform().rotation.z, glm::vec3(0.0f, 0.0f, 1.0f));
 
-	void SetScale(const glm::vec3& newScale);
+        // 4. Apply Scale
+        matrix = glm::scale(matrix, GetTransform().scale);
 
-	void SetMeshFilePath(const std::string& path) { meshFilePath = path; }
-	std::string GetMeshFilePath() const { return meshFilePath; }
+        return matrix;
+    }
 
-	glm::vec3 GetPosition() const { return localTransform.position; }
-	glm::vec3 GetRotation() const { return localTransform.rotation; }
-	glm::vec3 GetScale() const { return localTransform.scale; }
+    inline Transform& GetTransform() { return localTransform; }
 
-	const glm::mat4& GetModelMatrix() const {
-		if (transformDirtyFlag) {
-			cachedModelMatrix = localTransform.mat4();
-			transformDirtyFlag = false;
-		}
-		return cachedModelMatrix;
-	}
+    // --- COMPONENT SYSTEM ---
+    std::vector<std::shared_ptr<Component>> components;
 
-	inline Transform& GetTransform() { return localTransform; }
+    template<typename T>
+    void AddComponent(std::shared_ptr<T> component) {
+        component->owner = this;
+        components.push_back(component);
+        component->Awake();
+    }
 
-	glm::vec3 velocity = glm::vec3(0.0f);
+    template<typename T>
+    T* GetComponent() {
+        for (auto& comp : components) {
+            T* target = dynamic_cast<T*>(comp.get());
+            if (target) return target;
+        }
+        return nullptr;
+    }
 
-	std::shared_ptr<Mesh> GetMesh();
+	std::vector<std::shared_ptr<Component>>& GetComponents() { return components; }
+
 private:
-
-	Transform localTransform;
-	mutable glm::mat4 cachedModelMatrix = glm::mat4(1.0f);
-	mutable bool transformDirtyFlag = true;
-	std::string name;
-	std::shared_ptr<Mesh> mesh;
-	std::vector<std::shared_ptr<Mesh>> renderables;
-	std::string meshFilePath = "";
+    Transform localTransform;
+    mutable glm::mat4 cachedModelMatrix = glm::mat4(1.0f);
+    mutable bool transformDirtyFlag = true;
 };

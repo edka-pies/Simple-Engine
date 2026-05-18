@@ -21,6 +21,7 @@ Mesh::~Mesh()
 	if (VAO != 0) glDeleteVertexArrays(1, &VAO);
 	if (VBO != 0) glDeleteBuffers(1, &VBO);
 	if (EBO != 0) glDeleteBuffers(1, &EBO);
+	CleanUp();
 }
 
 
@@ -101,21 +102,14 @@ void Mesh::SetVertexData(const std::vector<float>& vertexData)
 {
 	vertexBuffer = vertexData;
 
-	if (isCube)
-	{
-		vertexStride = 5; // pos + uv
-	}
+	if (vertexBuffer.size() % 8 == 0)
+		vertexStride = 8;
+	else if (vertexBuffer.size() % 6 == 0)
+		vertexStride = 6;
+	else if (vertexBuffer.size() % 5 == 0)
+		vertexStride = 5;
 	else
-	{
-		if (vertexBuffer.size() % 8 == 0)
-			vertexStride = 8;
-		else if (vertexBuffer.size() % 6 == 0)
-			vertexStride = 6;
-		else if (vertexBuffer.size() % 5 == 0)
-			vertexStride = 5;
-		else
-			vertexStride = 3;
-	}
+		vertexStride = 3;
 
 	if (vertexStride == 0) vertexStride = 3;
 	vertexCount = static_cast<unsigned int>(vertexBuffer.size() / vertexStride);
@@ -150,23 +144,22 @@ void Mesh::SetIndexData(const std::vector<Face> faceData)
 	indexSize = static_cast<unsigned int>(indexBuffer.size());
 }
 
-void Mesh::Render(Shader& shader, const glm::mat4& viewProjectionMatrix)
+void Mesh::Draw(Shader& shader)
 {
-	shader.SetMatrix(viewProjectionMatrix, "modelMatrix");
-
-	// Texture: bind to unit 0
+	// Texture binding
 	if (myTexture != nullptr && myTexture->textureObject != 0)
 	{
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, myTexture->textureObject);
-		shader.SetInt(0, "diffuseTexture"); 
-		shader.SetInt(1, "useTexture");   
+		shader.SetInt(0, "diffuseTexture");
+		shader.SetInt(1, "useTexture");
 	}
 	else
 	{
-		shader.SetInt(0, "useTexture");    
+		shader.SetInt(0, "useTexture");
 	}
 
+	// Bind Vertex Array and Draw
 	glBindVertexArray(VAO);
 
 	if (EBO == 0)
@@ -217,4 +210,22 @@ void Mesh::SetTexture(std::shared_ptr<Texture> aTexture)
 std::shared_ptr<Texture> Mesh::GetTexture() 
 {
 	return myTexture;
+}
+
+AABB Mesh::CalculateLocalAABB(const std::vector<Vertex>& vertices) {
+	AABB box;
+	box.minBounds = glm::vec3(FLT_MAX);
+	box.maxBounds = glm::vec3(-FLT_MAX);
+
+	for (const auto& v : vertices) {
+		// Use the parentheses trick to block Windows macros from ruining std::min
+		box.minBounds.x = (std::min)(box.minBounds.x, v.position.x);
+		box.minBounds.y = (std::min)(box.minBounds.y, v.position.y);
+		box.minBounds.z = (std::min)(box.minBounds.z, v.position.z);
+
+		box.maxBounds.x = (std::max)(box.maxBounds.x, v.position.x);
+		box.maxBounds.y = (std::max)(box.maxBounds.y, v.position.y);
+		box.maxBounds.z = (std::max)(box.maxBounds.z, v.position.z);
+	}
+	return box;
 }

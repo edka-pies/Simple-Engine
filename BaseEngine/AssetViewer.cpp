@@ -1,5 +1,4 @@
 #include "AssetViewer.h"
-#include "Mesh.h"
 #include "EditorCore.h"
 #include "Object.h"
 #include "MessageBus.h"
@@ -11,6 +10,7 @@
 #include "Camera.h"
 #include "Texture.h"
 #include "TextureManager.h"	
+#include "MeshComponent.h"
 #include <set>
 #include <iostream>
 #include <string>
@@ -45,8 +45,8 @@ void AssetViewer::Init()
 		ObjectData data;
 		data.objetName = obj->GetName();
 
-		if (obj->GetMesh())
-		{
+		auto meshComp = obj->GetComponent<MeshComponent>();
+		if (meshComp && meshComp->mesh) {
 			data.position = obj->GetTransform().position;
 			data.eulerRotation = obj->GetTransform().rotation;
 			data.scale = obj->GetTransform().scale;
@@ -183,9 +183,10 @@ void AssetViewer::Draw()
 			{
 				auto tex = TextureManager::GetInstance().GetTexture(texturePath);
 
-				if (selectedObject->GetMesh())
+				auto meshComp = selectedObject->GetComponent<MeshComponent>();
+				if (meshComp && meshComp->mesh)
 				{
-					selectedObject->GetMesh()->SetTexture(tex);
+					meshComp->mesh->SetTexture(tex);
 				}
 			}
 		}
@@ -307,8 +308,9 @@ void AssetViewer::Draw()
 				else if (current_filter == 1) glFilter = GL_LINEAR;
 				else glFilter = GL_LINEAR_MIPMAP_LINEAR;
 
-				if (selectedObject->GetMesh()->GetTexture()) {
-					selectedObject->GetMesh()->GetTexture()->SetFiltering(glFilter);
+				auto meshComp = selectedObject->GetComponent<MeshComponent>();
+				if (meshComp && meshComp->mesh && meshComp->mesh->GetTexture()) {
+					meshComp->mesh->GetTexture()->SetFiltering(glFilter);
 				}
 			}
 		}

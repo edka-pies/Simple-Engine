@@ -1,0 +1,31 @@
+{
+  "prefab_name": "BasicRagdoll",
+  "components": [ "ActiveRagdollComponent" ],
+  "parts": [
+    {
+      "id": "head",
+      "offset": [ 0.0, 1.5, 0.0 ],
+      "scale": [ 0.8, 0.8, 0.8 ]
+    },
+    {
+      "id": "torso",
+      "offset": [ 0.0, 0.0, 0.0 ],
+      "scale": [ 1.0, 1.5, 1.0 ]
+    },
+    {
+      "id": "l_arm",
+      "offset": [ -1.5, 0.0, 0.0 ],
+      "scale": [ 0.5, 1.2, 0.5 ]
+    },
+    {
+      "id": "r_arm",
+      "offset": [ 1.5, 0.0, 0.0 ],
+      "scale": [ 0.5, 1.2, 0.5 ]
+    },
+    {
+      "id": "legs",
+      "offset": [ 0.0, -1.5, 0.0 ],
+      "scale": [ 1.0, 1.0, 1.0 ]
+    }
+  ]
+}

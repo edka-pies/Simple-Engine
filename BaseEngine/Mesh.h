@@ -1,17 +1,11 @@
 #pragma once
 #include <map>
-#include <iostream>
-#include <fstream>
-#include <string>
 #include <vector>
-#include <cfloat>
-#include "Renderable.h"
-#include "PhysicsUtils.h"
-#include "Transform.h"
-#include "ComponentRender.h"
+#include <string>
+#include <memory>
+#include <glm/glm/glm.hpp>
 #include "Texture.h"
-#include "MemoryCheck.h"
-//#include <glm/glm/glm.hpp>
+#include "PhysicsUtils.h" // For AABB
 
 #define MAX_BONE_INFLUENCE 4
 
@@ -92,60 +86,47 @@ struct Face
 
 };
 
-class Mesh : public ComponentRender
+class Mesh
 {
 public:
 	Mesh();
-
 	~Mesh();
 
-	virtual void Init() override;
+	void Init();
+	void CleanUp();
 
+	// Setting Data
 	void SetVertexData(const std::vector<float>& vertexData);
-
 	void SetVertexData(const std::vector<Vertex>& vertexData);
-
 	void SetIndexData(const std::vector<unsigned int>& indicesData);
-
 	void SetIndexData(const std::vector<Face> faceData);
 
-	virtual void Render(Shader& shader, const glm::mat4& viewProjectionMatrix) override;
-
-	virtual void CleanUp() override;
+	// --- REFACTORED: Renamed to Draw, removed the Matrix! ---
+	void Draw(class Shader& shader);
 
 	// Texture API
 	void SetTexture(std::shared_ptr<Texture> aTexture);
 	std::shared_ptr<Texture> GetTexture();
 
-
 	const std::vector<Vertex>& GetVertices() const { return vertices; }
-	const std::vector<unsigned int>& GetIndices() const {return indices;}
-	const AABB& GetLocalAABB() const { return localAABB; } 
+	const std::vector<unsigned int>& GetIndices() const { return indices; }
+	const AABB& GetLocalAABB() const { return localAABB; }
 
 	static std::shared_ptr<Mesh> CreateModelFromFile(const std::string& filePath);
-
 	static AABB CalculateLocalAABB(const std::vector<Vertex>& vertices);
 
-	AABB localAABB = { glm::vec3(0.0f), glm::vec3(0.0f) }; 
+	AABB localAABB = { glm::vec3(0.0f), glm::vec3(0.0f) };
 	std::vector<Vertex> vertices;
 	std::vector<unsigned int> indices;
 
 protected:
-	unsigned int VBO; // Raw data on vertices
-	unsigned int VAO;
-	unsigned int EBO;
+	unsigned int VBO, VAO, EBO;
 	unsigned int vertexCount = 0;
 	unsigned int indexSize = 0;
+	unsigned int vertexStride = 3;
 
 	std::vector<float> vertexBuffer;
 	std::vector<unsigned int> indexBuffer;
-
-	// number of floats per vertex (3 for pos-only, 5 for pos+uv, 6 pos+normal, 8 pos+uv+normal)
-	unsigned int vertexStride = 3;
-
-	bool transformDirtyFlag = true;
-	bool isCube = false;
-	bool isHouse = false;
 
 	std::map<std::string, BoneInfo> m_BoneInfoMap;
 	int m_BoneCounter = 0;

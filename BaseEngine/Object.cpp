@@ -1,67 +1,38 @@
 #include "Object.h"
-#include "Mesh.h"
-#include "GLFW/Include/glfw3.h"
-#include "Application.h"
 
-Object::Object() : mesh(nullptr), name("Object")
+uint32_t Object::nextID = 0;
+
+// Automatically assign the unique ID when created
+Object::Object() : id(++nextID), name("GameObject")
 {
+}
+
+Object::~Object()
+{
+    CleanUp();
 }
 
 void Object::Init()
 {
-    if (!mesh)
-    {
-        CreateMesh();
-    }
-
-    if (mesh)
-    {
-        mesh->Init();
-
-        renderables.clear(); // Clear old references
-        renderables.push_back(mesh);
-    }
+    // Any base initialization logic goes here
 }
 
-void Object::Update(float deltaTime)
+void Object::Update(float dt)
 {
-
+    // Update all attached components
+    for (auto& comp : components) {
+        comp->Update(dt);
+    }
 }
 
 void Object::CleanUp()
 {
-
+    components.clear();
 }
 
-void Object::SetName(std::string newName)
+void Object::SetName(const std::string& newName)
 {
-	name = newName;
-}
-
-const std::vector<std::shared_ptr<Mesh>>& Object::GetRenderables()
-{
-	return renderables;
-}
-
-void Object::CreateMesh()
-{
-    mesh = std::make_shared<Mesh>();
-}
-
-void Object::SetMesh(std::shared_ptr<Mesh> aMesh)
-{
-    mesh = aMesh;
-
-    renderables.clear();
-    if (mesh)
-    {
-        renderables.push_back(mesh);
-    }
-}
-
-std::shared_ptr<Mesh> Object::GetMesh()
-{
-	return mesh;
+    name = newName;
 }
 
 void Object::SetRotation(const glm::vec3& newRotation)
@@ -81,25 +52,3 @@ void Object::SetScale(const glm::vec3& newScale)
     localTransform.scale = newScale;
     transformDirtyFlag = true;
 }
-
-AABB Mesh::CalculateLocalAABB(const std::vector<Vertex>& vertices) {
-    AABB box;
-    box.minBounds = glm::vec3(FLT_MAX);
-    box.maxBounds = glm::vec3(-FLT_MAX);
-
-    for (const auto& v : vertices) {
-        // Use the parentheses trick to block Windows macros from ruining std::min
-        box.minBounds.x = (std::min)(box.minBounds.x, v.position.x);
-        box.minBounds.y = (std::min)(box.minBounds.y, v.position.y);
-        box.minBounds.z = (std::min)(box.minBounds.z, v.position.z);
-
-        box.maxBounds.x = (std::max)(box.maxBounds.x, v.position.x);
-        box.maxBounds.y = (std::max)(box.maxBounds.y, v.position.y);
-        box.maxBounds.z = (std::max)(box.maxBounds.z, v.position.z);
-    }
-    return box;
-}
-
-Object::~Object()
-{
-}   
